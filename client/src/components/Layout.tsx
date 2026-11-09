@@ -30,22 +30,22 @@ export const Layout: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    Promise.all([api.getAuthStatus(), api.getMe()]).then(([status, currentUser]) => {
+    let active = true;
+    Promise.all([
+      api.getAuthStatus().catch(() => ({ registered: false, onboardingComplete: false })),
+      api.getMe().catch(() => null)
+    ]).then(([status, currentUser]) => {
+      if (!active) return;
       setRegistered(status.registered);
       setOnboardingCompleteBackend(status.onboardingComplete);
       if (currentUser) {
         setUser(currentUser);
         if (status.onboardingComplete) setOnboardingComplete(true);
-        setAuthChecked(true);
-        return;
       }
-      api.loginAsDemo().then(demo => {
-        setUser(demo.user);
-        setRegistered(true);
-        setOnboardingComplete(true);
-        setOnboardingCompleteBackend(true);
-      }).finally(() => setAuthChecked(true));
+    }).finally(() => {
+      if (active) setAuthChecked(true);
     });
+    return () => { active = false; };
   }, []);
 
   const handleQuickAskSubmit = async (e: React.FormEvent) => {

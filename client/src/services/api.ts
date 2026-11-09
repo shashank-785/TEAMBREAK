@@ -8,6 +8,17 @@ const API_BASE = '/api';
 
 const nativeFetch = globalThis.fetch.bind(globalThis);
 
+async function authResponse(res: Response, action: string): Promise<{ token: string; user: User }> {
+  const data = await res.json().catch(() => null) as { error?: string; token?: string; user?: User } | null;
+  if (!res.ok) {
+    throw new Error(data?.error || `Account ${action} requires the LearnOS server. On GitHub Pages, use Proceed as Demo Account.`);
+  }
+  if (!data || typeof data.token !== 'string' || !data.user) {
+    throw new Error(`The LearnOS server returned an invalid ${action} response.`);
+  }
+  return { token: data.token, user: data.user };
+}
+
 export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   const token = localStorage.getItem('learnos_token');
   const headers = new Headers(init.headers || {});
@@ -39,24 +50,32 @@ export const api = {
     return res.ok ? res.json() : { registered: false, onboardingComplete: false };
   },
   async register(email: string, password: string, confirmPassword: string, profile: Partial<User>): Promise<{ token: string; user: User }> {
-    const res = await nativeFetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, confirmPassword, profile })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Registration failed');
+    let res: Response;
+    try {
+      res = await nativeFetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, confirmPassword, profile })
+      });
+    } catch {
+      throw new Error('Account sign-up requires the LearnOS server. On GitHub Pages, use Proceed as Demo Account.');
+    }
+    const data = await authResponse(res, 'sign-up');
     localStorage.setItem('learnos_token', data.token);
     return data;
   },
   async login(email: string, password: string): Promise<{ token: string; user: User }> {
-    const res = await nativeFetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Login failed');
+    let res: Response;
+    try {
+      res = await nativeFetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+    } catch {
+      throw new Error('Account login requires the LearnOS server. On GitHub Pages, use Proceed as Demo Account.');
+    }
+    const data = await authResponse(res, 'login');
     localStorage.setItem('learnos_token', data.token);
     return data;
   },
