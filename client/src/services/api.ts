@@ -46,6 +46,9 @@ async function handleResponse<T>(res: Response, fallbackData: T): Promise<T> {
 export const api = {
   // Auth & Profile
   async getAuthStatus(): Promise<{ registered: boolean; onboardingComplete: boolean }> {
+    if (localStorage.getItem('learnos_token') === 'demo-static-session') {
+      return { registered: true, onboardingComplete: true };
+    }
     const res = await nativeFetch(`${API_BASE}/auth/status`);
     return res.ok ? res.json() : { registered: false, onboardingComplete: false };
   },
@@ -113,9 +116,20 @@ export const api = {
       createdAt: '2026-11-08T00:00:00.000Z'
     };
     localStorage.setItem('learnos_token', 'demo-static-session');
+    localStorage.setItem('learnos_demo_user', JSON.stringify(demoUser));
     return { token: 'demo-static-session', user: demoUser };
   },
   async getMe(): Promise<User | null> {
+    if (localStorage.getItem('learnos_token') === 'demo-static-session') {
+      const savedDemoUser = localStorage.getItem('learnos_demo_user');
+      if (!savedDemoUser) return null;
+      try {
+        const user = JSON.parse(savedDemoUser) as User;
+        return typeof user.id === 'string' && typeof user.name === 'string' ? user : null;
+      } catch {
+        return null;
+      }
+    }
     const res = await apiFetch(`${API_BASE}/auth/me`);
     if (!res.ok) return null;
     const data = await res.json();
