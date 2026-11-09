@@ -6,9 +6,12 @@ import {
   Flame, Sparkles, ChevronRight, Puzzle
 } from 'lucide-react';
 import { User } from '../types';
+import { Avatar } from './Avatar';
 
 interface SidebarProps {
   user: User | null;
+  isOpen: boolean;
+  onNavigate: () => void;
 }
 
 const navItems = [
@@ -25,9 +28,9 @@ const navItems = [
   { name: 'Profile & Settings', path: '/settings', icon: Settings },
 ];
 
-export const Sidebar: React.FC<SidebarProps> = ({ user }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ user, isOpen, onNavigate }) => {
   return (
-    <aside className="w-64 bg-[#0B0D12] border-r border-[#232936] flex flex-col h-screen fixed left-0 top-0 select-none z-30">
+    <aside className={`fixed left-0 top-0 z-40 flex h-screen w-64 select-none flex-col border-r border-[#232936] bg-[#0B0D12] transition-transform duration-300 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       {/* Brand Header */}
       <div className="h-16 px-6 flex items-center justify-between border-b border-[#232936]">
         <div className="flex items-center gap-3">
@@ -56,6 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user }) => {
               key={item.path}
               to={item.path}
               end={item.path === '/'}
+              onClick={onNavigate}
               className={({ isActive }) => `
                 flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all group
                 ${isActive 
@@ -99,11 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user }) => {
       {user && (
         <div className="p-3 border-t border-[#232936] bg-[#0E1118]">
           <div className="flex items-center gap-3 p-2 rounded-lg bg-[#151923] border border-[#232936]">
-            <img 
-              src={user.avatarUrl} 
-              alt={user.name} 
-              className="w-10 h-10 rounded-lg object-cover border border-indigo-500/40" 
-            />
+            <Avatar avatarUrl={user.avatarUrl} name={user.name} className="h-10 w-10 border border-indigo-500/40 text-xl" />
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-xs text-[#F8FAFC] truncate">{user.name}</div>
               <div className="text-[11px] text-[#94A3B8] truncate">Sem {user.semester} • {user.major.split(' ')[0]}</div>

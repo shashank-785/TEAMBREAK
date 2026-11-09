@@ -46,13 +46,13 @@ The application was engineered with 6 isolated agent responsibilities:
 1. **Dashboard (ATLAS)**: Real-time GPA tracker, study hours, problem statistics, today's schedule, AI focus recommendations, and subject mastery meters.
 2. **College Tutor (NOVA)**: 6 university core subjects (DSA, OS, DBMS, Networks, Math, AI), Unit 1-5 syllabus trees, and interactive Socratic AI tutor (Feynman explanations, code samples, analogies).
 3. **Study Planner (ORBIT)**: Weekly class timetable, Kanban task sprint board, SuperMemo SM-2 spaced repetition queue, and Pomodoro focus timer with Web Audio ambient noise synthesizer.
-4. **Notes & Documents (NOVA)**: Markdown note manager, document ingestion, one-click AI study summarizer, and automated exam question generator.
+4. **Notes & Documents (NOVA)**: Markdown note manager with Exam Prep, Interview Prep, and custom folders, text/Markdown/JSON imports, one-click AI study summarizer, and AI-generated MCQs.
 5. **Exam Centre (NOVA)**: Adaptive quizzes with timer, 3D flip card flashcards, timed mock exam mode, and 2021-2025 university PYQ bank with model solutions.
-6. **Coding Lab (FORGE)**: Multi-language IDE (C, Python, JavaScript), curated problem library (Two Sum, Valid Parentheses, Reverse List), Piston/VM sandbox runner, and AI code assistant.
+6. **Coding Lab (FORGE)**: Multi-language IDE that discovers every runtime installed on the configured Piston sandbox, curated problem library (Two Sum, Valid Parentheses, Reverse List), and AI code assistant.
 7. **Skill Development (FORGE)**: Visual career roadmaps (Full-Stack AI, ML Specialist), prerequisite skill trees, and interactive AI Technical Mock Interview Simulator with rubric scoring.
 8. **AI Assistant (ATLAS/KERNEL)**: Centralized academic and career chatbot with pre-built prompt templates (Resume review, Bug trace, 7-day study plan, Math solver).
 9. **Analytics (ATLAS/SENTINEL)**: Weekly study distribution charts, problem difficulty breakdown, 30-day activity streak calendar, and 6+ unlockable gamification badges.
-10. **Profile, Settings & Help (ATLAS/KERNEL)**: Student profile customizer, Gemini/Supabase config, live system diagnostics audit, and comprehensive documentation manual.
+10. **Profile, Settings & Help (ATLAS/KERNEL)**: Student profile customizer, AI provider status and setup guidance, live system diagnostics audit, and comprehensive documentation manual.
 
 ---
 
@@ -84,6 +84,19 @@ npm run dev:client
 ```
 - Open browser at: **`http://localhost:5173`**
 - Backend Health Check: **`http://localhost:5000/api/system/health`**
+
+### Coding language runtimes
+The Coding Lab lists languages and versions available from the configured Piston instance. Set `PISTON_API_URL` in the server environment to the Piston `/api/v2/execute` endpoint; the matching `/api/v2/runtimes` endpoint is used to populate the language picker. Only runtimes installed on that instance can be selected and executed.
+
+### LearnOS AI 1.0 (local Ollama)
+The AI Tutor uses Ollama on the LearnOS host; students do not need API keys or external AI accounts. A 3B quantized model is a good fit for a machine with 8 GB or more RAM. This project was checked on Windows 11 with a Ryzen 7 7730U, 15.3 GB RAM, and integrated Radeon graphics; `qwen2.5:3b` is the configured default and can run on CPU, though response speed depends on the machine.
+
+1. Install Ollama from [ollama.com/download](https://ollama.com/download) and start it.
+2. In PowerShell, download the model: `ollama pull qwen2.5:3b`. The model is not bundled with LearnOS.
+3. Copy `server/.env.example` to `server/.env`, keeping `OLLAMA_API_URL=http://127.0.0.1:11434/api/chat` and `OLLAMA_MODEL=qwen2.5:3b` unless you intentionally choose a different installed model.
+4. Start LearnOS using the commands above. The AI Tutor's status shows whether Ollama is reachable and the selected model is installed.
+
+The assistant stores conversations locally in `server/data/learnos.json` and can use relevant text from notes imported into LearnOS. For public deployment, Ollama must run on a server reachable by the backend; a developer's localhost model is not available to deployed users. Protect that server endpoint and use a reverse proxy/firewall appropriate to your deployment.
 
 ### Building for Production
 ```bash

@@ -11,7 +11,9 @@ import { Badge } from '../../components/Badge';
 export const CodingLab: React.FC = () => {
   const [problems, setProblems] = useState<CodingProblem[]>([]);
   const [selectedProblem, setSelectedProblem] = useState<CodingProblem | null>(null);
-  const [language, setLanguage] = useState<'javascript' | 'python' | 'c'>('javascript');
+  const [runtimes, setRuntimes] = useState<{ language: string; version: string; aliases: string[] }[]>([]);
+  const [selectedRuntime, setSelectedRuntime] = useState('');
+  const [isLoadingRuntimes, setIsLoadingRuntimes] = useState(true);
   const [code, setCode] = useState<string>('');
   const [customStdin, setCustomStdin] = useState<string>('');
 
@@ -23,37 +25,87 @@ export const CodingLab: React.FC = () => {
   // AI Assistant State
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [aiError, setAiError] = useState('');
 
   useEffect(() => {
+    api.getCodeRuntimes().then(availableRuntimes => {
+      setRuntimes(availableRuntimes);
+      const defaultRuntime = availableRuntimes.find(runtime =>
+        runtime.language.toLowerCase() === 'javascript' || runtime.aliases.some(alias => alias.toLowerCase() === 'js')
+      ) || availableRuntimes[0];
+      if (defaultRuntime) setSelectedRuntime(`${defaultRuntime.language}@${defaultRuntime.version}`);
+    }).finally(() => setIsLoadingRuntimes(false));
+
     api.getCodingProblems().then((fetched) => {
       setProblems(fetched);
       if (fetched.length > 0) {
         api.getCodingProblemDetail(fetched[0].slug).then((detail) => {
           if (detail) {
             setSelectedProblem(detail);
-            setCode(detail.starterCode.javascript);
+            setCode(detail.starterCode.javascript || '');
           }
         });
       }
     });
   }, []);
 
+  const runtimeLanguage = selectedRuntime.split('@')[0] || '';
+
+  useEffect(() => {
+    if (selectedRuntime && selectedProblem) {
+      setCode(getStarterCode(selectedRuntime, selectedProblem));
+    }
+  }, [selectedRuntime, selectedProblem]);
+
+  const getStarterCode = (runtimeId: string, problem: CodingProblem | null): string => {
+    const languageName = runtimeId.split('@')[0].toLowerCase();
+    if (problem && Object.prototype.hasOwnProperty.call(problem.starterCode, languageName)) {
+      return problem.starterCode[languageName as keyof CodingProblem['starterCode']];
+    }
+
+    const templates: Record<string, string> = {
+      javascript: 'console.log("Hello, LearnOS!");',
+      typescript: 'console.log("Hello, LearnOS!");',
+      python: 'print("Hello, LearnOS!")',
+      py: 'print("Hello, LearnOS!")',
+      c: '#include <stdio.h>\n\nint main(void) {\n    printf("Hello, LearnOS!\\n");\n    return 0;\n}',
+      'c++': '#include <iostream>\n\nint main() {\n    std::cout << "Hello, LearnOS!" << std::endl;\n    return 0;\n}',
+      java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, LearnOS!");\n    }\n}',
+      go: 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, LearnOS!")\n}',
+      rust: 'fn main() {\n    println!("Hello, LearnOS!");\n}',
+      ruby: 'puts "Hello, LearnOS!"',
+      php: '<?php\necho "Hello, LearnOS!";',
+      bash: 'echo "Hello, LearnOS!"',
+      sh: 'echo "Hello, LearnOS!"',
+      sql: '-- Write your SQL query here',
+      r: 'print("Hello, LearnOS!")',
+      lua: 'print("Hello, LearnOS!")',
+      perl: 'print "Hello, LearnOS!\\n";',
+      swift: 'print("Hello, LearnOS!")',
+      kotlin: 'fun main() {\n    println("Hello, LearnOS!")\n}',
+      csharp: 'using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, LearnOS!");\n    }\n}',
+      'c#': 'using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, LearnOS!");\n    }\n}',
+      dart: 'void main() {\n  print("Hello, LearnOS!");\n}',
+      elixir: 'IO.puts("Hello, LearnOS!")',
+      haskell: 'main = putStrLn "Hello, LearnOS!"',
+    };
+    return templates[languageName] || '// Write your code here';
+  };
+
   const handleSelectProblem = async (slug: string) => {
     const detail = await api.getCodingProblemDetail(slug);
     if (detail) {
       setSelectedProblem(detail);
-      setCode(detail.starterCode[language]);
+      setCode(getStarterCode(selectedRuntime, detail));
       setExecutionOutput(null);
       setTestEvaluation(null);
       setAiAnalysis(null);
     }
   };
 
-  const handleLanguageChange = (newLang: 'javascript' | 'python' | 'c') => {
-    setLanguage(newLang);
-    if (selectedProblem) {
-      setCode(selectedProblem.starterCode[newLang]);
-    }
+  const handleLanguageChange = (runtimeId: string) => {
+    setSelectedRuntime(runtimeId);
+    setCode(getStarterCode(runtimeId, selectedProblem));
   };
 
   const handleRunCode = async () => {
@@ -61,7 +113,7 @@ export const CodingLab: React.FC = () => {
     setIsExecuting(true);
     setTestEvaluation(null);
     try {
-      const result = await api.executeCode(language, code, customStdin);
+      const result = await api.executeCode(selectedRuntime, code, customStdin);
       setExecutionOutput(result);
     } finally {
       setIsExecuting(false);
@@ -73,7 +125,7 @@ export const CodingLab: React.FC = () => {
     setIsExecuting(true);
     setExecutionOutput(null);
     try {
-      const evaluation = await api.evaluateProblem(selectedProblem.slug, language, code);
+      const evaluation = await api.evaluateProblem(selectedProblem.slug, selectedRuntime, code);
       setTestEvaluation(evaluation);
       if (evaluation.allPassed) {
         confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
@@ -87,9 +139,12 @@ export const CodingLab: React.FC = () => {
     if (isAiLoading) return;
     setIsAiLoading(true);
     setAiAnalysis(null);
+    setAiError('');
     try {
-      const response = await api.askCodeAI(mode, language, code, selectedProblem?.description);
+      const response = await api.askCodeAI(mode, runtimeLanguage, code, selectedProblem?.description);
       setAiAnalysis(response);
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : 'AI code assistance failed.');
     } finally {
       setIsAiLoading(false);
     }
@@ -105,31 +160,31 @@ export const CodingLab: React.FC = () => {
             <h1 className="text-2xl font-extrabold text-[#F8FAFC]">Coding Lab & IDE</h1>
           </div>
           <p className="text-xs text-[#94A3B8] mt-1">
-            Sandboxed execution environment for C, Python & JavaScript with automated test runner.
+            Run and test code in every language installed on your configured Piston sandbox.
           </p>
         </div>
 
         {/* Language Selector & Action Buttons */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-[#151923] border border-[#232936] rounded-lg p-1">
-            {(['javascript', 'python', 'c'] as const).map(lang => (
-              <button
-                key={lang}
-                onClick={() => handleLanguageChange(lang)}
-                className={`px-3 py-1 rounded text-xs font-mono font-semibold uppercase transition-all ${
-                  language === lang
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-[#94A3B8] hover:text-[#F8FAFC]'
-                }`}
-              >
-                {lang === 'javascript' ? 'JS' : lang}
-              </button>
-            ))}
-          </div>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <label className="sr-only" htmlFor="coding-language">Programming language</label>
+          <select
+            id="coding-language"
+            value={selectedRuntime}
+            onChange={event => handleLanguageChange(event.target.value)}
+            disabled={isLoadingRuntimes || runtimes.length === 0}
+            className="min-h-10 max-w-48 rounded-lg border border-[#232936] bg-[#151923] px-3 text-xs font-semibold text-[#F8FAFC] disabled:opacity-60"
+          >
+            {isLoadingRuntimes && <option value="">Loading languages…</option>}
+            {!isLoadingRuntimes && runtimes.length === 0 && <option value="">No runtimes available</option>}
+            {runtimes.map(runtime => {
+              const runtimeId = `${runtime.language}@${runtime.version}`;
+              return <option key={runtimeId} value={runtimeId}>{runtime.language} · {runtime.version}</option>;
+            })}
+          </select>
 
           <button
             onClick={handleRunCode}
-            disabled={isExecuting}
+            disabled={isExecuting || !selectedRuntime}
             className="flex items-center gap-1.5 px-4 py-2 bg-[#1C2230] hover:bg-[#232936] text-[#F8FAFC] border border-[#232936] rounded-lg text-xs font-semibold transition-all"
           >
             {isExecuting ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} className="fill-white" />}
@@ -138,7 +193,7 @@ export const CodingLab: React.FC = () => {
 
           <button
             onClick={handleSubmitProblem}
-            disabled={isExecuting}
+            disabled={isExecuting || !selectedRuntime || !selectedProblem}
             className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-emerald-600/30 transition-all"
           >
             {isExecuting ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={14} />}
@@ -146,6 +201,12 @@ export const CodingLab: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {runtimes.length === 0 && !isLoadingRuntimes && (
+        <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200">
+          No coding runtimes are available. Configure <code>PISTON_API_URL</code> on the LearnOS server and enable the desired languages in your Piston sandbox to populate this list.
+        </div>
+      )}
 
       {/* Main 2-Column IDE Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -215,7 +276,7 @@ export const CodingLab: React.FC = () => {
           <div className="bg-[#151923] border border-[#232936] rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs font-mono text-[#94A3B8] flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-              <span>Editor • {language.toUpperCase()}</span>
+              <span>Editor • {runtimeLanguage.toUpperCase() || 'Select a language'}</span>
             </div>
 
             {/* AI Action Buttons */}
@@ -269,6 +330,7 @@ export const CodingLab: React.FC = () => {
               </div>
             </div>
           )}
+          {aiError && <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">{aiError}</p>}
 
           {/* Execution Console Output */}
           <div className="bg-[#151923] border border-[#232936] rounded-xl p-4 space-y-3">

@@ -59,30 +59,36 @@ router.post('/interview/:id/respond', async (req: Request, res: Response) => {
   const session = interviews.find(i => i.id === id);
   if (!session) return res.status(404).json({ success: false, error: 'Interview session not found' });
 
-  // Record user answer
-  session.messages.push({
-    sender: 'user',
-    text: answer,
-    timestamp: new Date().toISOString()
-  });
+  if (typeof answer !== 'string' || !answer.trim() || answer.length > 8000) {
+    return res.status(400).json({ success: false, error: 'Answer must contain 1-8000 characters.' });
+  }
 
-  // Generate evaluation
-  const lastAiQuestion = session.messages.filter(m => m.sender === 'ai').slice(-1)[0]?.text || 'Technical question';
-  const evaluation = aiService.evaluateInterview(lastAiQuestion, answer, session.role);
-  session.score = evaluation.score;
-  session.feedback = evaluation;
+  try {
+    const lastAiQuestion = session.messages.filter(m => m.sender === 'ai').slice(-1)[0]?.text || 'Technical question';
+    const evaluation = await aiService.evaluateInterview(lastAiQuestion, answer.trim(), session.role);
+    session.messages.push({
+      sender: 'user',
+      text: answer.trim(),
+      timestamp: new Date().toISOString()
+    });
+    session.score = evaluation.score;
+    session.feedback = evaluation;
 
-  // Add AI feedback message
-  const aiFeedbackText = `### 🎯 Interviewer Feedback & Score: ${evaluation.score}/100\n\n**Assessment:** ${evaluation.summary}\n\n**Strengths:**\n${evaluation.strengths.map(s => `- ${s}`).join('\n')}\n\n**Areas for Improvement:**\n${evaluation.improvements.map(i => `- ${i}`).join('\n')}\n\n---\n**Follow-up Question:**\nExcellent explanation. Now, how would you test and monitor this system in a production environment with distributed tracing?`;
+    const aiFeedbackText = `### Interviewer feedback: ${evaluation.score}/100\n\n**Assessment:** ${evaluation.summary}\n\n**Strengths:**\n${evaluation.strengths.map(item => `- ${item}`).join('\n')}\n\n**Areas for improvement:**\n${evaluation.improvements.map(item => `- ${item}`).join('\n')}\n\n---\n**Follow-up question:**\n${evaluation.followUpQuestion}`;
+    session.messages.push({
+      sender: 'ai',
+      text: aiFeedbackText,
+      timestamp: new Date().toISOString()
+    });
 
-  session.messages.push({
-    sender: 'ai',
-    text: aiFeedbackText,
-    timestamp: new Date().toISOString()
-  });
-
-  db.saveInterview(session);
-  res.json({ success: true, session, evaluation });
+    db.saveInterview(session);
+    res.json({ success: true, session, evaluation });
+  } catch (error) {
+    res.status(502).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'The AI interview evaluation failed.'
+    });
+  }
 });
 
 export default router;

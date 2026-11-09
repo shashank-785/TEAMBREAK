@@ -27,6 +27,14 @@ interface DatabaseSchema {
   interviews: MockInterviewSession[];
   achievements: Achievement[];
   aiHistory: { id: string; role: 'user' | 'assistant'; text: string; timestamp: string }[];
+  aiConversations?: {
+    id: string;
+    userId: string;
+    title: string;
+    createdAt: string;
+    updatedAt: string;
+    messages: { id: string; role: 'user' | 'assistant'; text: string; timestamp: string }[];
+  }[];
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,7 +58,22 @@ class DatabaseService {
 
       if (fs.existsSync(DB_FILE)) {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
-        return JSON.parse(raw);
+        const data = JSON.parse(raw) as DatabaseSchema;
+        if (!Array.isArray(data.aiConversations)) {
+          const legacyMessages = Array.isArray(data.aiHistory) ? data.aiHistory : [];
+          data.aiConversations = legacyMessages.length
+            ? [{
+                id: 'conv_legacy_' + data.user.id,
+                userId: data.user.id,
+                title: legacyMessages.find(message => message.role === 'user')?.text.slice(0, 60) || 'Previous chat',
+                createdAt: legacyMessages[0].timestamp,
+                updatedAt: legacyMessages[legacyMessages.length - 1].timestamp,
+                messages: legacyMessages
+              }]
+            : [];
+          this.persist(data);
+        }
+        return data;
       }
     } catch (err) {
       console.warn('[DB] Failed reading db file, falling back to seed data:', err);
@@ -87,7 +110,8 @@ class DatabaseService {
       roadmaps: [],
       interviews: [],
       achievements: [],
-      aiHistory: []
+      aiHistory: [],
+      aiConversations: []
     };
 
     this.persist(defaultData);
@@ -300,6 +324,63 @@ class DatabaseService {
     this.data.aiHistory.push(msg);
     if (this.data.aiHistory.length > 50) this.data.aiHistory.shift();
     this.save();
+  }
+
+  getAiConversations(userId: string) {
+    return (this.data.aiConversations || [])
+      .filter(conversation => conversation.userId === userId)
+      .map(({ messages: _messages, ...conversation }) => conversation)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  createAiConversation(userId: string, title = 'New chat') {
+    const now = new Date().toISOString();
+    const conversation = {
+      id: 'conv_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      userId,
+      title: title.trim().slice(0, 80) || 'New chat',
+      createdAt: now,
+      updatedAt: now,
+      messages: [] as { id: string; role: 'user' | 'assistant'; text: string; timestamp: string }[]
+    };
+    this.data.aiConversations ||= [];
+    this.data.aiConversations.unshift(conversation);
+    this.save();
+    return conversation;
+  }
+
+  getAiConversation(userId: string, conversationId: string) {
+    return (this.data.aiConversations || []).find(
+      conversation => conversation.userId === userId && conversation.id === conversationId
+    ) || null;
+  }
+
+  addAiConversationMessage(
+    userId: string,
+    conversationId: string,
+    message: { id: string; role: 'user' | 'assistant'; text: string; timestamp: string }
+  ) {
+    const conversation = this.getAiConversation(userId, conversationId);
+    if (!conversation) return false;
+    conversation.messages.push(message);
+    if (conversation.messages.length > 100) conversation.messages.splice(0, conversation.messages.length - 100);
+    if (message.role === 'user' && conversation.title === 'New chat') {
+      conversation.title = message.text.trim().slice(0, 60) || 'New chat';
+    }
+    conversation.updatedAt = message.timestamp;
+    this.save();
+    return true;
+  }
+
+  deleteAiConversation(userId: string, conversationId: string) {
+    const conversations = this.data.aiConversations || [];
+    const remaining = conversations.filter(
+      conversation => conversation.userId !== userId || conversation.id !== conversationId
+    );
+    if (remaining.length === conversations.length) return false;
+    this.data.aiConversations = remaining;
+    this.save();
+    return true;
   }
 }
 

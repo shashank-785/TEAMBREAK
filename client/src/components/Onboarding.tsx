@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, GraduationCap, PlayCircle, Sparkles } from 'lucide-react';
 import { User } from '../types';
+import { Avatar, avatarOptions } from './Avatar';
 
 interface Props {
   onComplete: (profile: User, syllabus: string, courses: string, coding: string, goal: string) => void;
@@ -16,13 +17,14 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onDemo }) => {
   const [semester, setSemester] = useState(1);
   const [currentGpa, setCurrentGpa] = useState(0);
   const [targetGpa, setTargetGpa] = useState(9);
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [goal, setGoal] = useState('');
   const [coding, setCoding] = useState('');
   const [courses, setCourses] = useState('');
   const [syllabus, setSyllabus] = useState('');
 
   const canContinue = step === 0
-    ? name.trim() && email.trim() && university.trim() && major.trim()
+    ? name.trim() && email.trim() && university.trim() && major.trim() && avatarUrl
     : step === 1
       ? goal.trim() && coding.trim() && courses.trim()
       : syllabus.trim();
@@ -31,7 +33,7 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onDemo }) => {
     onComplete({
       id: 'usr_personalized',
       name: name.trim(), email: email.trim(), university: university.trim(), major: major.trim(),
-      semester, targetGpa, currentGpa, dreamRole: goal.trim(), avatarUrl: '',
+      semester, targetGpa, currentGpa, dreamRole: goal.trim(), avatarUrl,
       streakDays: 0, totalStudyHours: 0, quizzesCompleted: 0, problemsSolved: 0,
       createdAt: new Date().toISOString()
     }, syllabus, courses, coding, goal);
@@ -46,6 +48,31 @@ export const Onboarding: React.FC<Props> = ({ onComplete, onDemo }) => {
           <div className="rounded-2xl bg-indigo-600 p-3"><GraduationCap /></div>
           <div><h1 className="text-2xl font-bold">Build your LearnOS</h1><p className="text-sm text-slate-400">Tell us about you. We will personalize everything.</p></div>
         </div>
+        {step === 0 && (
+          <fieldset className="mb-6">
+            <legend className="text-sm font-semibold text-slate-200">Choose your avatar</legend>
+            <p className="mb-3 mt-1 text-xs text-slate-400">Pick the one that feels like you. You can change it later.</p>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {avatarOptions.map(avatar => {
+                const value = `learnos-avatar:${avatar.id}`;
+                const selected = avatarUrl === value;
+                return (
+                  <button
+                    key={avatar.id}
+                    type="button"
+                    aria-label={`${avatar.label} avatar`}
+                    aria-pressed={selected}
+                    onClick={() => setAvatarUrl(value)}
+                    className={`flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border p-2 transition ${selected ? 'border-indigo-400 bg-indigo-500/15 ring-2 ring-indigo-400/30' : 'border-slate-700 bg-slate-900/40 hover:border-indigo-400/50'}`}
+                  >
+                    <Avatar avatarUrl={value} name={avatar.label} className="h-10 w-10" />
+                    <span className="text-[11px] text-slate-300">{avatar.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
         <button type="button" onClick={onDemo} className="mb-6 flex w-full items-center justify-center gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 px-5 py-4 text-sm font-bold text-amber-300 hover:bg-amber-400/20">
           <PlayCircle size={20} />
           Proceed as Demo Account

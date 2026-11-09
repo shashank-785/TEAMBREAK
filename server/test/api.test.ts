@@ -109,22 +109,80 @@ async function runTests() {
 
   // 8. AI Academic Service
   await test('AI Pedagogical Response Generator', async () => {
-    const response = await aiService.generateResponse('Explain simply AVL tree rotations', 'College Tutor');
-    assert.ok(response.length > 50);
-    assert.ok(response.includes('Analogy') || response.includes('Core Idea') || response.includes('Tutor'));
+    const originalFetch = globalThis.fetch;
+    let requestBody: any;
+    globalThis.fetch = (async (_input, init) => {
+      requestBody = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({ message: { content: 'AVL rotations rebalance a tree after insertion. A right rotation moves a heavy left child upward and restores balance.' } }));
+    }) as typeof fetch;
+    try {
+      const response = await aiService.generateResponse('Explain AVL tree rotations simply');
+      assert.match(response, /right rotation/);
+      assert.strictEqual(requestBody.model, process.env.OLLAMA_MODEL || 'qwen2.5:3b');
+      assert.strictEqual(requestBody.messages[0].role, 'system');
+      assert.match(requestBody.messages[0].content, /Hinglish/);
+      assert.match(requestBody.messages[0].content, /Do not assume intended behavior/);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  await test('AI streaming preserves recent conversation context', async () => {
+    const originalFetch = globalThis.fetch;
+    let requestBody: any;
+    globalThis.fetch = (async (_input, init) => {
+      requestBody = JSON.parse(String(init?.body));
+      return new Response(
+        '{"message":{"content":"Binary search halves the range."},"done":false}\n' +
+        '{"message":{"content":" Its time complexity is O(log n)."},"done":true}\n'
+      );
+    }) as typeof fetch;
+    try {
+      const received: string[] = [];
+      const answer = await aiService.streamResponse([
+        { role: 'user', content: 'Explain binary search.' },
+        { role: 'assistant', content: 'It repeatedly halves the search interval.' },
+        { role: 'user', content: 'What is its time complexity?' }
+      ], db.getUser().id, token => received.push(token), new AbortController().signal);
+      assert.strictEqual(answer, 'Binary search halves the range. Its time complexity is O(log n).');
+      assert.strictEqual(received.length, 2);
+      assert.strictEqual(requestBody.stream, true);
+      assert.ok(requestBody.messages.some((item: any) => item.content === 'It repeatedly halves the search interval.'));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   // 9. Skill Roadmaps & Interviews
-  await test('Skill Roadmaps & Interview Evaluator', () => {
+  await test('Skill Roadmaps & Interview Evaluator', async () => {
     const roadmaps = db.getRoadmaps();
     assert.ok(roadmaps.length >= 2);
-    const evalResult = aiService.evaluateInterview(
-      'Explain Virtual DOM',
-      'The virtual DOM is a lightweight JavaScript representation of the actual DOM tree. React diffs it to minimize direct DOM manipulations.',
-      'Frontend Engineer'
-    );
-    assert.ok(evalResult.score >= 70);
-    assert.ok(evalResult.strengths.length > 0);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(JSON.stringify({
+      message: {
+        content: JSON.stringify({
+          technicalAccuracy: 84,
+          communication: 82,
+          problemSolving: 78,
+          score: 81,
+          summary: 'Accurate explanation with a clear account of reconciliation.',
+          strengths: ['Defines the virtual DOM correctly', 'Explains diffing'],
+          improvements: ['Mention keys and list identity'],
+          followUpQuestion: 'How does React use keys when reconciling a list?'
+        })
+      }
+    }))) as typeof fetch;
+    try {
+      const evalResult = await aiService.evaluateInterview(
+        'Explain Virtual DOM',
+        'The virtual DOM is a lightweight JavaScript representation of the actual DOM tree.',
+        'Frontend Engineer'
+      );
+      assert.strictEqual(evalResult.score, 81);
+      assert.match(evalResult.followUpQuestion, /keys/);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   // 10. Achievements & Gamification

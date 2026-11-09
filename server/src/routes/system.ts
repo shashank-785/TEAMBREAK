@@ -6,9 +6,9 @@ import { getSupabaseConfig } from '../db/supabaseClient.js';
 const router = Router();
 const serverStartTime = Date.now();
 
-router.get('/health', (req: Request, res: Response) => {
+router.get('/health', async (req: Request, res: Response) => {
   const supabase = getSupabaseConfig();
-  const aiStatus = aiService.getStatus();
+  const aiStatus = await aiService.getStatus();
 
   res.json({
     status: 'healthy',
@@ -31,9 +31,11 @@ router.get('/health', (req: Request, res: Response) => {
         config: supabase
       },
       aiEngine: {
-        status: 'active',
+        status: aiStatus.isReady ? 'connected' : 'unavailable',
         provider: aiStatus.provider,
-        hasExternalKey: aiStatus.hasExternalKey
+        isReady: aiStatus.isReady,
+        modelInstalled: aiStatus.modelInstalled,
+        error: aiStatus.error
       },
       codeSandbox: {
         status: process.env.PISTON_API_URL ? 'configured' : 'not-configured',

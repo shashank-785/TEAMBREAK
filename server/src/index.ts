@@ -13,6 +13,7 @@ import analyticsRoutes from './routes/analytics.js';
 import systemRoutes from './routes/system.js';
 import { requireAuth } from './middleware/auth.js';
 import { rateLimitWrites, validateJsonPayload } from './middleware/security.js';
+import { aiService } from './services/aiService.js';
 
 dotenv.config();
 
@@ -96,7 +97,8 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // Start Server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  const aiStatus = await aiService.getStatus();
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                      LEARNOS BACKEND SERVER                   ║
@@ -104,7 +106,7 @@ app.listen(PORT, () => {
 ╚═══════════════════════════════════════════════════════════════╝
   🚀 Server running on: http://localhost:${PORT}
   📡 API Health Check:  http://localhost:${PORT}/api/system/health
-  🤖 AI Engine:         Ready (Gemini Proxy + Academic AI Engine)
+  🤖 AI Engine:         ${aiStatus.isReady ? `Ready (${aiStatus.provider})` : `Unavailable (${aiStatus.error})`}
   💻 Sandboxed Runner:  External Piston service (configure PISTON_API_URL)
   💾 Persistence:       Active
   `);

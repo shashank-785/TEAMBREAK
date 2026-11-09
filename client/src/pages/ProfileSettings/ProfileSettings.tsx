@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { 
   Settings, User, Key, Activity, HelpCircle, BookOpen,
-  CheckCircle2, XCircle, Shield, Sparkles, Database, Save, Loader2 
+  CheckCircle2, XCircle, Shield, Sparkles, Save, Loader2
 } from 'lucide-react';
 import { User as UserType } from '../../types';
 import { Badge } from '../../components/Badge';
@@ -24,12 +24,6 @@ export const ProfileSettings: React.FC = () => {
   const [coursesText, setCoursesText] = useState(() => localStorage.getItem('learnos_courses_text') || '');
   const [syllabusFileName, setSyllabusFileName] = useState(() => localStorage.getItem('learnos_syllabus_file') || '');
   const [syllabusStatus, setSyllabusStatus] = useState('');
-
-  // API Config Form
-  const [geminiKey, setGeminiKey] = useState('');
-  const [supabaseUrl, setSupabaseUrl] = useState('');
-  const [supabaseKey, setSupabaseKey] = useState('');
-  const [apiSaveStatus, setApiSaveStatus] = useState<string | null>(null);
 
   // Diagnostics State
   const [healthData, setHealthData] = useState<any>(null);
@@ -76,12 +70,6 @@ export const ProfileSettings: React.FC = () => {
     }
   };
 
-  const handleSaveApiKeys = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setApiSaveStatus('Saved securely to backend.');
-    setTimeout(() => setApiSaveStatus(null), 3000);
-  };
-
   const handleSaveSyllabus = () => {
     localStorage.setItem('learnos_syllabus_text', syllabusText.trim());
     localStorage.setItem('learnos_courses_text', coursesText.trim());
@@ -120,7 +108,7 @@ export const ProfileSettings: React.FC = () => {
           {[
             { id: 'profile', label: 'Student Profile', icon: User },
             { id: 'syllabus', label: 'University Syllabus', icon: BookOpen },
-            { id: 'api', label: 'API Keys', icon: Key },
+            { id: 'api', label: 'Ollama Setup', icon: Key },
             { id: 'diagnostics', label: 'Diagnostics', icon: Activity },
             { id: 'help', label: 'User Guide', icon: HelpCircle },
           ].map(tab => {
@@ -298,40 +286,52 @@ export const ProfileSettings: React.FC = () => {
       {activeTab === 'api' && (
         <div className="bg-[#151923] border border-[#232936] rounded-xl p-6 sm:p-8 space-y-6">
           <div className="pb-4 border-b border-[#232936]">
-            <h2 className="text-base font-bold text-[#F8FAFC]">API Integrations (Optional Free Services)</h2>
+            <h2 className="text-base font-bold text-[#F8FAFC]">Local AI Setup</h2>
             <p className="text-xs text-[#94A3B8] mt-0.5">
-              LearnOS runs 100% self-contained with its built-in Autonomous Academic AI engine. You can optionally connect your free Google Gemini API key or Supabase PostgreSQL instance below.
+              LearnOS runs its private local model through Ollama. Students do not need API keys or external AI accounts.
             </p>
           </div>
 
-          <form onSubmit={handleSaveApiKeys} className="space-y-4">
+          <div className="rounded-lg border border-[#232936] bg-[#0B0D12] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-[#F8FAFC]">AI provider status</span>
+              <Badge variant={healthData?.services?.aiEngine?.isReady ? 'success' : 'warning'} size="sm">
+                {healthData?.services?.aiEngine?.provider || 'Status unavailable'}
+              </Badge>
+            </div>
+            <p className="mt-2 text-xs text-[#94A3B8]">
+              {healthData?.services?.aiEngine?.isReady
+                ? 'Ollama is reachable and the selected model is installed.'
+                : healthData?.services?.aiEngine?.error || 'Ollama or the selected model is unavailable.'}
+            </p>
+          </div>
+
+          <div className="space-y-4">
             <div>
               <label className="text-xs font-medium text-[#94A3B8] flex items-center gap-1.5">
                 <Sparkles size={13} className="text-indigo-400" />
-                <span>Google Gemini API Key (Free Tier)</span>
+                <span>Install and run Ollama</span>
               </label>
-              <input
-                type="password"
-                value={geminiKey}
-                onChange={(e) => setGeminiKey(e.target.value)}
-                placeholder="AIzaSy..."
-                className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] font-mono focus:outline-none focus:border-indigo-500"
-              />
+              <ol className="mt-2 list-inside list-decimal space-y-1.5 text-xs leading-relaxed text-[#94A3B8]">
+                <li>Install Ollama from <a href="https://ollama.com/download" target="_blank" rel="noreferrer" className="font-semibold text-indigo-300 underline underline-offset-2">ollama.com/download</a> and start it.</li>
+                <li>In PowerShell, run <code className="text-indigo-300">ollama pull qwen2.5:3b</code> to download the model (~2 GB).</li>
+                <li>Set <code className="text-indigo-300">OLLAMA_API_URL=http://127.0.0.1:11434/api/chat</code> and <code className="text-indigo-300">OLLAMA_MODEL=qwen2.5:3b</code> in <code className="text-indigo-300">server/.env</code>, then restart the backend.</li>
+              </ol>
               <span className="text-[11px] text-[#94A3B8]/70 mt-1 block">
-                Never exposed to the frontend; proxied securely through the Node.js backend.
+                Requires about 8 GB RAM; 16 GB is recommended. For a public deployment, Ollama must run on a server reachable by the backend.
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="hidden">
               <div>
                 <label className="text-xs font-medium text-[#94A3B8] flex items-center gap-1.5">
-                  <Database size={13} className="text-emerald-400" />
+                  <Sparkles size={13} className="text-emerald-400" />
                   <span>Supabase Project URL</span>
                 </label>
                 <input
                   type="text"
-                  value={supabaseUrl}
-                  onChange={(e) => setSupabaseUrl(e.target.value)}
+                  value=""
+                  readOnly
                   placeholder="https://xyz.supabase.co"
                   className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] font-mono focus:outline-none focus:border-indigo-500"
                 />
@@ -341,29 +341,26 @@ export const ProfileSettings: React.FC = () => {
                 <label className="text-xs font-medium text-[#94A3B8]">Supabase Anon Key</label>
                 <input
                   type="password"
-                  value={supabaseKey}
-                  onChange={(e) => setSupabaseKey(e.target.value)}
+                  value=""
+                  readOnly
                   placeholder="eyJhbGciOi..."
                   className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] font-mono focus:outline-none focus:border-indigo-500"
                 />
               </div>
             </div>
 
-            {apiSaveStatus && (
-              <div className="p-3 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-400 font-medium">
-                {apiSaveStatus}
-              </div>
-            )}
-
             <div className="pt-4 border-t border-[#232936] flex justify-end">
               <button
-                type="submit"
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30"
+                type="button"
+                onClick={fetchHealth}
+                disabled={isDiagnosing}
+                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 disabled:opacity-50"
               >
-                Save Integration Config
+                {isDiagnosing ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
+                Check Ollama model
               </button>
             </div>
-          </form>
+          </div>
         </div>
       )}
 

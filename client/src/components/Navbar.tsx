@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Flame, Clock, Sparkles, Bell, Wifi, WifiOff } from 'lucide-react';
+import { Search, Flame, Clock, Sparkles, Menu, LogOut, Moon, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../types';
 
@@ -7,9 +7,12 @@ interface NavbarProps {
   user: User | null;
   onOpenQuickAsk?: () => void;
   onLogout?: () => void;
+  onMenuToggle?: () => void;
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ user, onOpenQuickAsk, onLogout }) => {
+export const Navbar: React.FC<NavbarProps> = ({ user, onOpenQuickAsk, onLogout, onMenuToggle, theme, onToggleTheme }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [isBackendHealthy, setIsBackendHealthy] = useState(true);
@@ -41,27 +44,46 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onOpenQuickAsk, onLogout }
   };
 
   return (
-    <header className="h-16 bg-[#0B0D12]/90 backdrop-blur-md border-b border-[#232936] px-8 flex items-center justify-between sticky top-0 z-20">
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#232936] bg-[#0B0D12]/90 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+      <button
+        type="button"
+        onClick={onMenuToggle}
+        aria-label="Open navigation menu"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#232936] text-[#94A3B8] transition hover:border-indigo-500/40 hover:text-white md:hidden"
+      >
+        <Menu size={19} />
+      </button>
+
       {/* Search Bar */}
-      <form onSubmit={handleSearchSubmit} className="relative w-96">
+      <form onSubmit={handleSearchSubmit} className="relative min-w-0 max-w-md flex-1">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]" size={16} />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search subjects, topics, PYQs, coding problems... (Enter)"
-          className="w-full bg-[#151923] border border-[#232936] rounded-lg pl-10 pr-12 py-1.5 text-xs text-[#F8FAFC] placeholder-[#94A3B8]/60 focus:outline-none focus:border-indigo-500 transition-colors"
+          placeholder="Search LearnOS..."
+          aria-label="Search LearnOS"
+          className="w-full rounded-xl border border-[#232936] bg-[#151923] py-2.5 pl-10 pr-10 text-xs text-[#F8FAFC] transition-colors placeholder:text-[#94A3B8]/60 focus:border-indigo-500 focus:outline-none sm:py-2"
         />
-        <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-[#94A3B8] bg-[#232936] px-1.5 py-0.5 rounded border border-slate-700">
+        <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-slate-700 bg-[#232936] px-1.5 py-0.5 font-mono text-[10px] text-[#94A3B8] sm:block">
           /
         </kbd>
       </form>
 
       {/* Stats & Quick Actions */}
-      <div className="flex items-center gap-4">
+      <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#232936] bg-[#151923] text-amber-300 transition hover:border-indigo-500/40 sm:h-9 sm:w-9"
+        >
+          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
         {/* System Health Status */}
         <div 
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#151923] border border-[#232936] text-[11px]"
+          className="hidden items-center gap-1.5 rounded-full border border-[#232936] bg-[#151923] px-2.5 py-1 text-[11px] sm:flex"
           title={isBackendHealthy ? 'Backend Node.js & DB Connected' : 'Offline Mode (Local Engine Active)'}
         >
           {isBackendHealthy ? (
@@ -79,7 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onOpenQuickAsk, onLogout }
 
         {/* Streak Counter */}
         {user && (
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-xs font-semibold">
+          <div className="hidden items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400 lg:flex">
             <Flame size={15} className="fill-amber-400 text-amber-400" />
             <span>{user.streakDays} Day Streak</span>
           </div>
@@ -87,7 +109,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onOpenQuickAsk, onLogout }
 
         {/* Total Study Hours */}
         {user && (
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-indigo-400 text-xs font-semibold">
+          <div className="hidden items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-400 lg:flex">
             <Clock size={15} />
             <span>{user.totalStudyHours} hrs</span>
           </div>
@@ -99,12 +121,17 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onOpenQuickAsk, onLogout }
             if (onOpenQuickAsk) onOpenQuickAsk();
             else navigate('/assistant');
           }}
-          className="flex items-center gap-2 px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
+          className="flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-3 text-xs font-semibold text-white shadow-lg shadow-indigo-600/20 transition-all hover:from-indigo-500 hover:to-violet-500 active:scale-95 sm:h-auto sm:px-3.5 sm:py-2"
         >
           <Sparkles size={14} />
-          <span>Ask AI Tutor</span>
+          <span className="hidden sm:inline">Ask AI Tutor</span>
         </button>
-        {onLogout && <button onClick={onLogout} className="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white">Log out</button>}
+        {onLogout && (
+          <button onClick={onLogout} aria-label="Log out" className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-[#151923] hover:text-white sm:h-auto sm:w-auto sm:px-2 sm:py-1.5">
+            <LogOut size={16} className="sm:hidden" />
+            <span className="hidden text-xs font-semibold sm:inline">Log out</span>
+          </button>
+        )}
       </div>
     </header>
   );

@@ -54,6 +54,9 @@ router.post('/topics/:id/ai-explain', async (req: Request, res: Response) => {
   } else {
     prompt = userPrompt || `Explain the key concepts and exam points for ${topicTitle}.`;
   }
+  if (mode !== 'custom' && typeof userPrompt === 'string' && userPrompt.trim()) {
+    prompt += `\n\nUniversity syllabus and student context:\n${userPrompt.slice(0, 10000)}`;
+  }
 
   try {
     const aiResponse = await aiService.generateResponse(prompt, `College Tutor: ${topicTitle}`);

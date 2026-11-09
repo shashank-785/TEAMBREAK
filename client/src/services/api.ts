@@ -139,7 +139,7 @@ export const api = {
     const syllabus = [
       localStorage.getItem('learnos_syllabus_text'),
       localStorage.getItem('learnos_courses_text')
-    ].filter(Boolean).join('\n');
+    ].filter(Boolean).join('\n').slice(0, 8000);
     const syllabusPrompt = syllabus
       ? `Use this university syllabus context:\n${syllabus}\n\nStudent request:\n${userPrompt || ''}`
       : userPrompt;
@@ -147,10 +147,11 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode, userPrompt: syllabusPrompt })
-    }).catch(() => null);
-    if (!res) return "AI service temporarily unavailable. Please verify backend connection.";
+    });
     const data = await res.json();
-    return data.response || "No response generated";
+    if (!res.ok || data.success === false) throw new Error(data.error || `AI request failed (HTTP ${res.status}).`);
+    if (typeof data.response !== 'string' || !data.response.trim()) throw new Error('The AI service returned an empty response.');
+    return data.response;
   },
 
   // Planner
@@ -252,17 +253,19 @@ export const api = {
   },
 
   async summarizeNote(id: string): Promise<string> {
-    const res = await fetch(`${API_BASE}/notes/${id}/summarize`, { method: 'POST' }).catch(() => null);
-    if (!res) return "Summary generation unavailable offline.";
+    const res = await fetch(`${API_BASE}/notes/${id}/summarize`, { method: 'POST' });
     const data = await res.json();
-    return data.summary || "Summary generated";
+    if (!res.ok || data.success === false) throw new Error(data.error || `AI summary failed (HTTP ${res.status}).`);
+    if (typeof data.summary !== 'string' || !data.summary.trim()) throw new Error('The AI service returned an empty summary.');
+    return data.summary;
   },
 
   async generateNoteQuestions(id: string): Promise<string> {
-    const res = await fetch(`${API_BASE}/notes/${id}/generate-questions`, { method: 'POST' }).catch(() => null);
-    if (!res) return "Question generation unavailable offline.";
+    const res = await fetch(`${API_BASE}/notes/${id}/generate-questions`, { method: 'POST' });
     const data = await res.json();
-    return data.questions || "Questions generated";
+    if (!res.ok || data.success === false) throw new Error(data.error || `AI question generation failed (HTTP ${res.status}).`);
+    if (typeof data.questions !== 'string' || !data.questions.trim()) throw new Error('The AI service returned no questions.');
+    return data.questions;
   },
 
   // Exams
@@ -319,6 +322,13 @@ export const api = {
     return data.problems || [];
   },
 
+  async getCodeRuntimes(): Promise<{ language: string; version: string; aliases: string[] }[]> {
+    const res = await fetch(`${API_BASE}/coding/runtimes`).catch(() => null);
+    if (!res) return [];
+    const data = await res.json();
+    return data.success ? data.runtimes || [] : [];
+  },
+
   async getCodingProblemDetail(slug: string): Promise<CodingProblem | null> {
     const res = await fetch(`${API_BASE}/coding/problems/${slug}`).catch(() => null);
     if (!res) return null;
@@ -353,10 +363,11 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode, language, code, problemContext })
-    }).catch(() => null);
-    if (!res) return "AI assistance unavailable offline.";
+    });
     const data = await res.json();
-    return data.response || "No response";
+    if (!res.ok || data.success === false) throw new Error(data.error || `AI code assistance failed (HTTP ${res.status}).`);
+    if (typeof data.response !== 'string' || !data.response.trim()) throw new Error('The AI service returned an empty response.');
+    return data.response;
   },
 
   // Skills & Roadmaps
@@ -405,14 +416,87 @@ export const api = {
     return data.history || [];
   },
 
+  async getAiConversations(): Promise<{ id: string; title: string; createdAt: string; updatedAt: string }[]> {
+    const res = await apiFetch(`${API_BASE}/ai/conversations`);
+    const data = await res.json();
+    if (!res.ok || data.success === false) throw new Error(data.error || 'Unable to load chat history.');
+    return data.conversations || [];
+  },
+
+  async createAiConversation(): Promise<{ id: string; title: string; createdAt: string; updatedAt: string }> {
+    const res = await apiFetch(`${API_BASE}/ai/conversations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (!res.ok || data.success === false) throw new Error(data.error || 'Unable to start a new chat.');
+    return data.conversation;
+  },
+
+  async getAiConversation(conversationId: string): Promise<any> {
+    const res = await apiFetch(`${API_BASE}/ai/conversations/${encodeURIComponent(conversationId)}`);
+    const data = await res.json();
+    if (!res.ok || data.success === false) throw new Error(data.error || 'Unable to load this conversation.');
+    return data.conversation;
+  },
+
+  async sendAiConversationMessage(
+    conversationId: string,
+    message: string,
+    onToken: (token: string) => void,
+    signal: AbortSignal
+  ): Promise<any> {
+    const res = await apiFetch(`${API_BASE}/ai/conversations/${encodeURIComponent(conversationId)}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({ message }),
+      signal
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error || `AI request failed (HTTP ${res.status}).`);
+    }
+    if (!res.body) throw new Error('The server did not provide a response stream.');
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let completedMessage: any = null;
+    const processEvent = (event: string) => {
+      if (!event.startsWith('data: ')) return;
+      const data = JSON.parse(event.slice(6));
+      if (data.type === 'token' && typeof data.token === 'string') onToken(data.token);
+      if (data.type === 'done') completedMessage = data.message;
+      if (data.type === 'error') throw new Error(data.error || 'The AI request failed.');
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n');
+      buffer = events.pop() || '';
+      for (const event of events) processEvent(event.trim());
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) processEvent(buffer.trim());
+    if (!completedMessage) throw new Error('The AI stream ended before a complete response was received.');
+    return completedMessage;
+  },
+
   async sendAiMessage(message: string, category?: string): Promise<any> {
     const res = await fetch(`${API_BASE}/ai/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, category })
     }).catch(() => null);
-    if (!res) return { text: "AI Response (Offline Fallback): Your question was noted." };
+    if (!res) throw new Error('LearnOS could not reach its backend. Start the LearnOS server and try again.');
     const data = await res.json();
+    if (!res.ok || data.success === false) {
+      throw new Error(data.error || `AI request failed (HTTP ${res.status}).`);
+    }
+    if (!data.message?.text) throw new Error('The AI service returned an empty response. Check the provider configuration and try again.');
     return data.message;
   },
 

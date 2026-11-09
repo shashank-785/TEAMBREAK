@@ -28,17 +28,68 @@ export interface ProblemEvaluationResult {
   results: TestCaseResult[];
 }
 
+export interface CodeRuntime {
+  language: string;
+  version: string;
+  aliases: string[];
+}
+
 class CodeExecutionService {
+  private runtimeCache: { expiresAt: number; runtimes: CodeRuntime[] } | null = null;
+
+  public async getAvailableRuntimes(): Promise<CodeRuntime[]> {
+    if (this.runtimeCache && this.runtimeCache.expiresAt > Date.now()) {
+      return this.runtimeCache.runtimes;
+    }
+
+    const pistonUrl = process.env.PISTON_API_URL?.trim();
+    if (!pistonUrl) {
+      throw new Error('Code execution is not configured. Set PISTON_API_URL to a Piston execute endpoint.');
+    }
+
+    const runtimesUrl = new URL('./runtimes', pistonUrl).toString();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(runtimesUrl, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`Piston runtime list failed with HTTP ${response.status}`);
+      }
+
+      const data: unknown = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Piston returned an invalid runtime list.');
+      }
+
+      const runtimes = data.filter((runtime): runtime is CodeRuntime =>
+        Boolean(
+          runtime &&
+          typeof runtime.language === 'string' &&
+          typeof runtime.version === 'string' &&
+          (runtime.aliases === undefined || Array.isArray(runtime.aliases))
+        )
+      ).map(runtime => ({
+        language: runtime.language,
+        version: runtime.version,
+        aliases: Array.isArray(runtime.aliases) ? runtime.aliases.filter((alias): alias is string => typeof alias === 'string') : []
+      }));
+
+      this.runtimeCache = { expiresAt: Date.now() + 60_000, runtimes };
+      return runtimes;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   /**
    * Primary code execution entry point
    */
   public async execute(language: string, code: string, stdin = ''): Promise<ExecutionResult> {
-    const lang = language.toLowerCase();
     const startTime = Date.now();
 
     // 1. Try external Piston sandbox first
     try {
-      const pistonRes = await this.executeViaPiston(lang, code, stdin);
+      const pistonRes = await this.executeViaPiston(language, code, stdin);
       if (pistonRes) {
         return pistonRes;
       }
@@ -59,53 +110,54 @@ class CodeExecutionService {
   /**
    * Piston Public Sandbox execution (Free, multi-language sandbox)
    */
-  private async executeViaPiston(language: string, code: string, stdin: string): Promise<ExecutionResult | null> {
-    const languageMap: Record<string, { lang: string; version: string }> = {
-      javascript: { lang: 'javascript', version: '18.15.0' },
-      js: { lang: 'javascript', version: '18.15.0' },
-      python: { lang: 'python', version: '3.10.0' },
-      py: { lang: 'python', version: '3.10.0' },
-      c: { lang: 'c', version: '10.2.0' },
-      cpp: { lang: 'c++', version: '10.2.0' }
-    };
-
-    const target = languageMap[language];
-    if (!target) return null;
+  private async executeViaPiston(runtimeId: string, code: string, stdin: string): Promise<ExecutionResult | null> {
+    const separatorIndex = runtimeId.lastIndexOf('@');
+    const runtimeLanguage = runtimeId.slice(0, separatorIndex);
+    const runtimeVersion = runtimeId.slice(separatorIndex + 1);
+    const startedAt = Date.now();
+    const target = (await this.getAvailableRuntimes()).find(runtime =>
+      runtime.language === runtimeLanguage && runtime.version === runtimeVersion
+    );
+    if (separatorIndex < 1 || !target) {
+      throw new Error('The selected language runtime is not installed on the configured sandbox.');
+    }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
 
     const pistonUrl = process.env.PISTON_API_URL?.trim();
-    if (!pistonUrl) return null;
-    const response = await fetch(pistonUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        language: target.lang,
-        version: target.version,
-        files: [{ content: code }],
-        stdin: stdin,
-        run_timeout: 4000
-      }),
-      signal: controller.signal
-    });
+    if (!pistonUrl) throw new Error('Code execution is not configured. Set PISTON_API_URL.');
+    try {
+      const response = await fetch(pistonUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          language: target.language,
+          version: target.version,
+          files: [{ content: code }],
+          stdin: stdin,
+          run_timeout: 4000
+        }),
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        throw new Error(`Piston execution failed with HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      const run = data.run || {};
 
-    clearTimeout(timeout);
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    const run = data.run || {};
-
-    return {
-      stdout: run.stdout || '',
-      stderr: run.stderr || '',
-      exitCode: run.code ?? 0,
-      executionTimeMs: Math.round(Math.random() * 40 + 25), // typical execution ms
-      memoryKb: 24500,
-      isSandboxed: true,
-      engine: `Piston Sandbox (${target.lang} v${target.version})`
-    };
+      return {
+        stdout: run.stdout || '',
+        stderr: run.stderr || '',
+        exitCode: run.code ?? 0,
+        executionTimeMs: Date.now() - startedAt,
+        memoryKb: 24500,
+        isSandboxed: true,
+        engine: `Piston Sandbox (${target.language} v${target.version})`
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   /**

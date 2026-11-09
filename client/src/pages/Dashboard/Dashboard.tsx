@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { 
+import {
   GraduationCap, Clock, Award, Code2, Flame, ArrowRight, 
-  CheckCircle2, Circle, Sparkles, BookOpen, Calendar, 
-  TrendingUp, Compass, Play, ChevronRight 
+  CheckCircle2, Circle, Sparkles, BookOpen, Calendar,
+  TrendingUp, Compass, Play, ChevronRight, Target
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { User, PlannerTask, Subject, ScheduleItem } from '../../types';
@@ -36,18 +36,24 @@ export const Dashboard: React.FC = () => {
     await api.updateTask(taskId, { status: nextStatus as any });
   };
 
+  const startExamSprint = () => {
+    const courseList = subjects.map(subject => subject.name).slice(0, 6).join(', ');
+    const prompt = `Create a practical 7-day exam revision sprint for ${user?.name || 'me'}, a semester ${user?.semester || 1} ${user?.major || 'student'}. My subjects are ${courseList || 'my current semester subjects'}. Include a realistic daily schedule with focused study blocks, active recall, spaced revision, short breaks, and one self-test each day. Start with the highest-impact topics and keep each day achievable.`;
+    navigate('/assistant', { state: { prompt } });
+  };
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Hero Welcome Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-950/60 via-[#151923] to-[#151923] border border-indigo-500/20 p-8 shadow-xl">
+      <div className="relative overflow-hidden rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/60 via-[#151923] to-[#151923] p-5 shadow-xl sm:p-8">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Badge variant="purple">Semester {user?.semester || 5} • Computer Science</Badge>
               <Badge variant="success">Active Study Session</Badge>
             </div>
-            <h1 className="text-3xl font-extrabold text-[#F8FAFC] tracking-tight">
-              Welcome back, <span className="text-indigo-400">{user?.name || 'Alex'}</span>! 👋
+            <h1 className="text-2xl font-extrabold tracking-tight text-[#F8FAFC] sm:text-3xl">
+              Welcome back, <span className="text-indigo-400">{user?.name || 'Alex'}</span>!
             </h1>
             <p className="text-sm text-[#94A3B8] max-w-2xl leading-relaxed">
               Targeting <span className="text-[#F8FAFC] font-semibold">{user?.dreamRole || 'Full-Stack AI Engineer'}</span>. 
@@ -56,17 +62,17 @@ export const Dashboard: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <button
               onClick={() => navigate('/planner')}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all"
+              className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 transition-all hover:bg-indigo-500"
             >
               <Play size={14} className="fill-white" />
               <span>Start Pomodoro</span>
             </button>
             <button
               onClick={() => navigate('/coding')}
-              className="px-5 py-2.5 bg-[#1C2230] hover:bg-[#232936] text-[#F8FAFC] text-xs font-semibold rounded-xl border border-[#232936] flex items-center gap-2 transition-all"
+              className="flex items-center justify-center gap-2 rounded-xl border border-[#232936] bg-[#1C2230] px-5 py-3 text-xs font-semibold text-[#F8FAFC] transition-all hover:bg-[#232936]"
             >
               <Code2 size={15} className="text-indigo-400" />
               <span>Coding Lab</span>
@@ -77,6 +83,44 @@ export const Dashboard: React.FC = () => {
         {/* Subtle decorative glow */}
         <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
       </div>
+
+      {/* Lead magnet: personalized seven-day exam sprint */}
+      <section className="relative overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-[#10252b] via-[#131c27] to-[#17162b] p-5 sm:p-6">
+        <div className="absolute -right-10 -top-16 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-semibold text-cyan-200">
+              <Sparkles size={13} />
+              YOUR FREE LEARNING BOOST
+            </div>
+            <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">Turn exam stress into a 7-day plan.</h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
+              Get a personalized revision sprint built around your semester and subjects, with focused study blocks, active recall, and daily self-tests.
+            </p>
+            <button
+              type="button"
+              onClick={startExamSprint}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 sm:w-auto"
+            >
+              Build my free 7-day plan
+              <ArrowRight size={16} />
+            </button>
+            <p className="mt-2 text-[11px] text-slate-400">Free to try · Personalized by LearnOS AI · Takes one click</p>
+          </div>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-7 lg:max-w-sm" aria-label="Seven-day study plan preview">
+            {['Focus', 'Learn', 'Recall', 'Practice', 'Review', 'Test', 'Reset'].map((day, index) => (
+              <div key={day} className={`rounded-xl border p-2 text-center sm:px-2.5 sm:py-3 ${index === 0 ? 'border-cyan-300/40 bg-cyan-300/10' : 'border-white/10 bg-white/[0.03]'}`}>
+                <span className="block text-[9px] font-semibold uppercase tracking-wide text-slate-400">Day {index + 1}</span>
+                <span className="mt-1 block text-[10px] font-medium text-slate-200 sm:text-[11px]">{day}</span>
+              </div>
+            ))}
+            <div className="col-span-4 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[11px] text-slate-300 sm:col-span-7">
+              <Target size={15} className="shrink-0 text-cyan-300" />
+              <span>Built around your courses and exam goals</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Top Stat Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

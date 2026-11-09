@@ -82,6 +82,7 @@ export interface Note {
   id: string;
   title: string;
   subject: string;
+  folder?: string;
   content: string;
   tags: string[];
   summary?: string;

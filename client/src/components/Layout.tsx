@@ -19,6 +19,15 @@ export const Layout: React.FC = () => {
   const [authChecked, setAuthChecked] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [onboardingCompleteBackend, setOnboardingCompleteBackend] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (
+    localStorage.getItem('learnos_theme') === 'light' ? 'light' : 'dark'
+  ));
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('learnos_theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     Promise.all([api.getAuthStatus(), api.getMe()]).then(([status, currentUser]) => {
@@ -105,15 +114,33 @@ export const Layout: React.FC = () => {
   if (!onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} onDemo={enterDemo} />;
 
   return (
-    <div className="min-h-screen bg-[#0B0D12] text-[#F8FAFC] flex">
-      {/* Fixed Sidebar */}
-      <Sidebar user={user} />
+    <div className="flex min-h-screen overflow-x-hidden bg-[#0B0D12] text-[#F8FAFC]">
+      {isMobileSidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+        />
+      )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 ml-64 flex flex-col min-h-screen bg-[#0B0D12]">
-        <Navbar user={user} onOpenQuickAsk={() => setIsQuickAskOpen(true)} onLogout={handleLogout} />
-        
-        <main className="flex-1 p-8 overflow-y-auto">
+      <Sidebar
+        user={user}
+        isOpen={isMobileSidebarOpen}
+        onNavigate={() => setIsMobileSidebarOpen(false)}
+      />
+
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col bg-[#0B0D12] md:ml-64">
+        <Navbar
+          user={user}
+          onOpenQuickAsk={() => setIsQuickAskOpen(true)}
+          onLogout={handleLogout}
+          onMenuToggle={() => setIsMobileSidebarOpen(open => !open)}
+          theme={theme}
+          onToggleTheme={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}
+        />
+
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <Outlet context={{ user, setUser }} />
         </main>
       </div>

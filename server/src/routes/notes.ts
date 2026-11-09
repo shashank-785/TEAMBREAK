@@ -11,13 +11,14 @@ router.get('/', (req: Request, res: Response) => {
 
 // Create a new note
 router.post('/', (req: Request, res: Response) => {
-  const { title, subject, content, tags } = req.body;
+  const { title, subject, folder, content, tags } = req.body;
   if (!title || !content) {
     return res.status(400).json({ success: false, error: 'Title and Content are required' });
   }
   const note = db.createNote({
     title,
     subject: subject || 'General',
+    folder: typeof folder === 'string' && folder.trim() ? folder.trim() : 'General',
     content,
     tags: Array.isArray(tags) ? tags : []
   });
@@ -49,7 +50,7 @@ router.post('/:id/summarize', async (req: Request, res: Response) => {
 3. 3-5 bulleted exam focus points.
 
 Note Content:
-${note.content}`;
+${note.content.slice(0, 12000)}`;
 
     const summary = await aiService.generateResponse(prompt, 'notes');
     const updatedNote = db.updateNote(note.id, { summary });
@@ -65,10 +66,10 @@ router.post('/:id/generate-questions', async (req: Request, res: Response) => {
   if (!note) return res.status(404).json({ success: false, error: 'Note not found' });
 
   try {
-    const prompt = `Based on these study notes on "${note.title}", generate 3 exam-style technical questions with detailed step-by-step model solutions.
+    const prompt = `Based only on these study notes on "${note.title}", create 5 student-level multiple-choice questions (MCQs). Each question must have exactly four options labeled A-D, exactly one correct answer, the correct option clearly identified, and a brief explanation. Cover distinct key ideas and do not invent facts absent from the notes.
 
 Note Content:
-${note.content}`;
+${note.content.slice(0, 12000)}`;
 
     const questionsResponse = await aiService.generateResponse(prompt, 'exam_questions');
     res.json({ success: true, questions: questionsResponse });
