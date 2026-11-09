@@ -1,0 +1,52 @@
+PROJECT: LearnOS
+TEAM / REPOSITORY: TEAMBREAK
+GITHUB: https://github.com/shashank-785/TEAMBREAK
+
+PROJECT OVERVIEW
+LearnOS is an AI-powered student learning and career development platform for university and computer science engineering students. It brings academic learning, study planning, coding practice, exam preparation, and career development tools together in one application.
+
+CORE FEATURES
+- Student dashboard with study activity, progress, and GPA-related tracking.
+- AI-powered college tutor for core computer science and engineering subjects.
+- Study planner with timetable, task management, spaced repetition, and Pomodoro timer.
+- Notes and document management with AI-assisted summarization and quiz generation.
+- Exam preparation with quizzes, flashcards, mock exams, and previous-year questions.
+- Coding lab with programming practice and code assistance.
+- Skill development roadmaps and AI technical mock interviews.
+- Central AI assistant for academic and career-related help.
+- Analytics, progress tracking, and gamification.
+- Student profile, settings, and system diagnostics.
+
+TECHNICAL OVERVIEW
+The repository contains separate client and server applications, along with agent-related modules, documentation, scripts, and project reports. The documented setup uses Node.js and npm. The backend is based on Express, with Supabase and SQLite listed in the project architecture. The frontend is a Vite-based client. The AI tutor documentation describes a local Ollama integration, with qwen2.5:3b as the configured default model.
+
+PROJECT STRUCTURE
+- agents/   - Agent-related project modules
+- client/   - Frontend application
+- server/   - Backend API and services
+- docs/     - Static demo / published frontend files
+- scripts/  - Utility and project scripts
+- README.md - Setup instructions, architecture, and feature documentation
+
+RUNNING THE PROJECT
+Refer to README.md for the latest installation and run instructions. The documented development commands are:
+
+1. Install client dependencies:
+   npm install --prefix client
+
+2. Install server dependencies:
+   npm install --prefix server
+
+3. Start the backend in one terminal:
+   npm run dev:server
+
+4. Start the frontend in another terminal:
+   npm run dev:client
+
+5. Open:
+   http://localhost:5173
+
+NOTES
+This file is included at the repository root for the BharatCode project submission. For authoritative setup details, dependencies, environment variables, deployment instructions, and current implementation status, refer to README.md, .env.example, DEPLOYMENT_GUIDE.md, INTEGRATION_REPORT.md, and TEST_REPORT.md in the repository.
+
+Repository: https://github.com/shashank-785/TEAMBREAK
