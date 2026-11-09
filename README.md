@@ -98,7 +98,7 @@ The AI Tutor uses Ollama on the LearnOS host; students do not need API keys or e
 
 The assistant stores conversations locally in `server/data/learnos.json` and can use relevant text from notes imported into LearnOS. For public deployment, Ollama must run on a server reachable by the backend; a developer's localhost model is not available to deployed users. Protect that server endpoint and use a reverse proxy/firewall appropriate to your deployment.
 
-The GitHub Pages demo is a static frontend: visitors can choose **Proceed as Demo Account**, but real sign-up/login and server-backed AI require deploying the Express backend separately. GitHub Pages is published from `docs/`. Run `npm run publish:pages` to build and copy the app, including a GitHub Pages SPA fallback so direct links and refreshes work; commit and push the updated `docs/` directory to publish it.
+The GitHub Pages frontend is published from `docs/` and uses `VITE_API_URL` from `client/.env.production` to reach the deployed Express API. The API must allow `https://shashank-785.github.io` in CORS; AI is available only when Ollama is running on a host reachable by that backend. If the API is unavailable, visitors can still enter the browser-persisted demo workspace, but server-backed account and AI features require the backend. Run `npm run publish:pages` to build and copy the app, including a GitHub Pages SPA fallback so direct links and refreshes work; commit and push the updated `docs/` directory to publish it.
 
 ### Building for Production
 ```bash

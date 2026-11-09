@@ -1,20 +1,20 @@
 {
   "user": {
-    "id": "usr_demo_shashank",
-    "name": "Shashank Soam",
-    "email": "shashank.demo@learnos.app",
-    "university": "Indian Institute of Information Technology, Sonepat",
+    "id": "usr_demo",
+    "name": "user",
+    "email": "user.demo@learnos.app",
+    "university": "XYZ university",
     "major": "B.Tech Computer Science and Engineering",
-    "semester": 1,
+    "semester": 5,
     "targetGpa": 10,
-    "currentGpa": 0,
-    "streakDays": 6,
+    "currentGpa": 8.4,
+    "streakDays": 15,
     "totalStudyHours": 16.5,
     "quizzesCompleted": 18,
     "problemsSolved": 54,
     "dreamRole": "Full-Stack Developer Intern",
     "avatarUrl": "",
-    "createdAt": "2026-11-08T17:02:17.413Z"
+    "createdAt": "2026-09-01T09:00:00.000Z"
   },
   "subjects": [
     {
@@ -36,10 +36,10 @@
               "id": "top_dsa_1_1",
               "title": "Asymptotic Notations & Master Theorem",
               "estimatedMinutes": 35,
-              "content": "Asymptotic analysis describes the limiting behavior of execution time or memory when input size $n$ approaches infinity.\n\n### Big-O ($O$), Big-$Omega$, Big-$Theta$\n- **$O(g(n))$**: Upper bound. $f(n) \\le c \\cdot g(n)$ for all $n \\ge n_0$.\n- **$\\Omega(g(n))$**: Lower bound. $f(n) \\ge c \\cdot g(n)$ for all $n \\ge n_0$.\n- **$\\Theta(g(n))$**: Tight bound. $c_1 g(n) \\le f(n) \\le c_2 g(n)$.\n\n### Master Theorem\nFor recurrences of the form $T(n) = a T(n/b) + f(n)$ where $a \\ge 1, b > 1$:\n- If $f(n) = O(n^{\\log_b a - \\epsilon})$, then $T(n) = \\Theta(n^{\\log_b a})$.\n- If $f(n) = \\Theta(n^{\\log_b a} \\log^k n)$, then $T(n) = \\Theta(n^{\\log_b a} \\log^{k+1} n)$.\n- If $f(n) = \\Omega(n^{\\log_b a + \\epsilon})$ and regularity condition holds, $T(n) = \\Theta(f(n))$.",
+              "content": "Asymptotic analysis describes the limiting behavior of execution time or memory when input size $n$ approaches infinity.\n\n### Big-O ($O$), Big-$\\Omega$, Big-$\\Theta$\n- **$O(g(n))$**: Upper bound. $f(n) \\le c \\cdot g(n)$ for all $n \\ge n_0$.\n- **$\\Omega(g(n))$**: Lower bound. $f(n) \\ge c \\cdot g(n)$ for all $n \\ge n_0$.\n- **$\\Theta(g(n))$**: Tight bound. $c_1 g(n) \\le f(n) \\le c_2 g(n)$.\n\n### Master Theorem\nFor recurrences of the form $T(n) = a T(n/b) + f(n)$ where $a \\ge 1, b > 1$:\n- If $f(n) = O(n^{\\log_b a - \\epsilon})$, then $T(n) = \\Theta(n^{\\log_b a})$.\n- If $f(n) = \\Theta(n^{\\log_b a} \\log^k n)$, then $T(n) = \\Theta(n^{\\log_b a} \\log^{k+1} n)$.\n- If $f(n) = \\Omega(n^{\\log_b a + \\epsilon})$ and regularity condition holds, $T(n) = \\Theta(f(n))$.",
               "keyPoints": [
                 "Big-O represents the worst-case asymptotic upper bound.",
-                "Master theorem solves divide-and-conquer recurrences in $O(1)$ lookup time.",
+                "Master theorem solves divide-and-conquer recurrences directly, without expanding the recursion tree.",
                 "Amortized analysis averages cost across a sequence of operations."
               ],
               "codeExamples": [
@@ -350,7 +350,8 @@
       "startTime": "09:00",
       "endTime": "10:30",
       "title": "Data Structures Lecture",
-      "subject": "DSA",
+      "subjectId": "sub_dsa",
+      "subject": "Data Structures & Algorithms",
       "location": "Hall 302",
       "type": "lecture"
     },
@@ -359,8 +360,9 @@
       "dayOfWeek": 1,
       "startTime": "11:00",
       "endTime": "12:30",
-      "title": "Operating Systems Systems Lab",
-      "subject": "OS",
+      "title": "Operating Systems Lab",
+      "subjectId": "sub_os",
+      "subject": "Operating Systems",
       "location": "Lab 4B",
       "type": "lab"
     },
@@ -370,7 +372,8 @@
       "startTime": "14:00",
       "endTime": "16:00",
       "title": "Self Study & Flashcard Review",
-      "subject": "DBMS",
+      "subjectId": "sub_dbms",
+      "subject": "Database Management Systems",
       "location": "Library 2F",
       "type": "self_study"
     },
@@ -380,7 +383,8 @@
       "startTime": "10:00",
       "endTime": "11:30",
       "title": "Computer Networks Lecture",
-      "subject": "CN",
+      "subjectId": "sub_cn",
+      "subject": "Computer Networks",
       "location": "Room 105",
       "type": "lecture"
     },
@@ -390,7 +394,8 @@
       "startTime": "14:00",
       "endTime": "15:30",
       "title": "AI & Machine Learning Seminar",
-      "subject": "AI/ML",
+      "subjectId": "sub_ai",
+      "subject": "Artificial Intelligence & Machine Learning",
       "location": "Audi 1",
       "type": "lecture"
     },
@@ -400,7 +405,8 @@
       "startTime": "09:00",
       "endTime": "11:00",
       "title": "DSA Coding Practice Session",
-      "subject": "DSA",
+      "subjectId": "sub_dsa",
+      "subject": "Data Structures & Algorithms",
       "location": "Lab 2A",
       "type": "lab"
     },
@@ -410,7 +416,8 @@
       "startTime": "13:00",
       "endTime": "15:00",
       "title": "Database SQL Queries Workshop",
-      "subject": "DBMS",
+      "subjectId": "sub_dbms",
+      "subject": "Database Management Systems",
       "location": "Lab 1",
       "type": "lab"
     },
@@ -420,6 +427,7 @@
       "startTime": "16:00",
       "endTime": "18:00",
       "title": "Weekly Exam Prep & Mock Quiz",
+      "subjectId": null,
       "subject": "All",
       "location": "Study Pod",
       "type": "revision"
@@ -430,41 +438,41 @@
       "id": "rev_1",
       "topicId": "top_dsa_1_1",
       "topicTitle": "Master Theorem Recurrences",
-      "subjectName": "Data Structures",
+      "subjectId": "sub_dsa",
+      "subjectName": "Data Structures & Algorithms",
       "stage": 3,
       "lastReviewed": "2026-11-04",
-      "nextReviewDate": "2026-11-09",
-      "dueToday": true
+      "nextReviewDate": "2026-11-09"
     },
     {
       "id": "rev_2",
       "topicId": "top_os_1_2",
       "topicTitle": "Round Robin Scheduling Bounds",
+      "subjectId": "sub_os",
       "subjectName": "Operating Systems",
       "stage": 2,
       "lastReviewed": "2026-11-06",
-      "nextReviewDate": "2026-11-09",
-      "dueToday": true
+      "nextReviewDate": "2026-11-09"
     },
     {
       "id": "rev_3",
       "topicId": "top_dbms_1_1",
       "topicTitle": "BCNF vs 3NF Decomposition",
-      "subjectName": "Database Systems",
+      "subjectId": "sub_dbms",
+      "subjectName": "Database Management Systems",
       "stage": 4,
       "lastReviewed": "2026-10-28",
-      "nextReviewDate": "2026-11-12",
-      "dueToday": false
+      "nextReviewDate": "2026-11-12"
     },
     {
       "id": "rev_4",
       "topicId": "top_cn_1_1",
       "topicTitle": "TCP 3-Way Handshake & AIMD",
+      "subjectId": "sub_cn",
       "subjectName": "Computer Networks",
       "stage": 1,
       "lastReviewed": "2026-11-07",
-      "nextReviewDate": "2026-11-10",
-      "dueToday": false
+      "nextReviewDate": "2026-11-10"
     }
   ],
   "notes": [
@@ -580,6 +588,7 @@
   "flashcards": [
     {
       "id": "fc_1",
+      "subjectId": "sub_os",
       "subject": "Operating Systems",
       "front": "What is Thrashing in Virtual Memory?",
       "back": "Thrashing occurs when a computer spends more time paging data in and out of swap space than executing instructions, caused by insufficient physical frames for the active working sets.",
@@ -588,7 +597,8 @@
     },
     {
       "id": "fc_2",
-      "subject": "Data Structures",
+      "subjectId": "sub_dsa",
+      "subject": "Data Structures & Algorithms",
       "front": "What is the worst-case time complexity of QuickSort?",
       "back": "O(n^2), which happens when the pivot chosen is always the extreme (minimum or maximum) element in an already sorted or reverse-sorted array without random pivoting.",
       "mastered": true,
@@ -596,7 +606,8 @@
     },
     {
       "id": "fc_3",
-      "subject": "DBMS",
+      "subjectId": "sub_dbms",
+      "subject": "Database Management Systems",
       "front": "What does the ACID \"Isolation\" property mean?",
       "back": "Transactions execute concurrently without interference; the intermediate states of a transaction are invisible to other concurrent transactions.",
       "mastered": true,
@@ -604,6 +615,7 @@
     },
     {
       "id": "fc_4",
+      "subjectId": "sub_cn",
       "subject": "Computer Networks",
       "front": "What is the MTU of standard Ethernet?",
       "back": "1500 bytes (payload size excluding the Ethernet header and frame check sequence).",
@@ -612,7 +624,8 @@
     },
     {
       "id": "fc_5",
-      "subject": "AI & ML",
+      "subjectId": "sub_ai",
+      "subject": "Artificial Intelligence & Machine Learning",
       "front": "What makes a heuristic admissible in A* search?",
       "back": "A heuristic h(n) is admissible if it never overestimates the true lowest cost from node n to the goal: h(n) <= h*(n).",
       "mastered": false,
@@ -628,7 +641,7 @@
       "totalMarks": 50,
       "questions": [
         {
-          "id": "q_1",
+          "id": "mq_1",
           "subject": "Data Structures & Algorithms",
           "question": "What is the time complexity to search for an element in a balanced AVL tree with n nodes?",
           "options": [
@@ -641,7 +654,7 @@
           "explanation": "Because an AVL tree strictly enforces that child heights differ by at most 1, its height is strictly bounded by 1.44 log n, giving guaranteed O(log n) search time."
         },
         {
-          "id": "q_2",
+          "id": "mq_2",
           "subject": "Operating Systems",
           "question": "Which of the following conditions is NOT required for a deadlock to occur?",
           "options": [
@@ -654,7 +667,7 @@
           "explanation": "The four Coffman conditions are Mutual Exclusion, Hold and Wait, No Preemption, and Circular Wait. Aging is actually a solution used to prevent starvation!"
         },
         {
-          "id": "q_3",
+          "id": "mq_3",
           "subject": "Database Management Systems",
           "question": "In relational database theory, if every determinant in a table is a candidate key, the table is in:",
           "options": [
@@ -667,7 +680,7 @@
           "explanation": "BCNF requires that for every non-trivial functional dependency X -> Y, X must be a superkey (determinant is a candidate key)."
         },
         {
-          "id": "q_4",
+          "id": "mq_4",
           "subject": "Computer Networks",
           "question": "During TCP congestion control, what triggers Fast Retransmit?",
           "options": [
@@ -680,7 +693,7 @@
           "explanation": "Receiving 3 duplicate ACKs implies that a segment was lost while later segments successfully arrived, triggering Fast Retransmit without waiting for an RTO timeout."
         },
         {
-          "id": "q_5",
+          "id": "mq_5",
           "subject": "Data Structures & Algorithms",
           "question": "Which sorting algorithm has a worst-case time complexity of O(n log n) and requires O(1) auxiliary space?",
           "options": [
@@ -703,7 +716,7 @@
       "semester": "Autumn End-Sem",
       "questionNumber": "Q3 (a)",
       "marks": 8,
-      "question": "Consider a system with 5 processes (P0-P4) and 3 resource types (A, B, C). Explain how the Banker’s Algorithm determines whether the system is in a safe state, and compute the safe sequence for a given allocation matrix.",
+      "question": "Consider a system with 5 processes (P0-P4) and 3 resource types (A, B, C) with total instances A=10, B=5, C=7. Allocation: P0=(0,1,0), P1=(2,0,0), P2=(3,0,2), P3=(2,1,1), P4=(0,0,2). Max: P0=(7,5,3), P1=(3,2,2), P2=(9,0,2), P3=(2,2,2), P4=(4,3,3). Available = (3,3,2). Explain how the Banker’s Algorithm determines whether the system is in a safe state, and compute the safe sequence.",
       "modelAnswer": "The Banker’s algorithm simulates resource allocation by checking if there exists an ordering of processes such that each process can satisfy its maximum remaining resource need using currently available resources plus resources freed by terminated processes.",
       "keySteps": [
         "Calculate Need Matrix: Need[i][j] = Max[i][j] - Allocation[i][j].",
@@ -748,9 +761,9 @@
       "sampleInput": "nums = [2, 7, 11, 15], target = 9",
       "sampleOutput": "[0, 1]",
       "starterCode": {
-        "javascript": "function twoSum(nums, target) {\n  const map = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const diff = target - nums[i];\n    if (map.has(diff)) {\n      return [map.get(diff), i];\n    }\n    map.set(nums[i], i);\n  }\n  return [];\n}\n\n// Test runner\nconsole.log(JSON.stringify(twoSum([2, 7, 11, 15], 9)));",
-        "python": "def two_sum(nums: list[int], target: int) -> list[int]:\n    lookup = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in lookup:\n            return [lookup[diff], i]\n        lookup[num] = i\n    return []\n\nprint(two_sum([2, 7, 11, 15], 9))",
-        "c": "#include <stdio.h>\n#include <stdlib.h>\n\nint* twoSum(int* nums, int numsSize, int target, int* returnSize) {\n    *returnSize = 2;\n    int* result = (int*)malloc(2 * sizeof(int));\n    for (int i = 0; i < numsSize; i++) {\n        for (int j = i + 1; j < numsSize; j++) {\n            if (nums[i] + nums[j] == target) {\n                result[0] = i;\n                result[1] = j;\n                return result;\n            }\n        }\n    }\n    return result;\n}\n\nint main() {\n    int nums[] = {2, 7, 11, 15};\n    int retSize;\n    int* res = twoSum(nums, 4, 9, &retSize);\n    printf(\"[%d, %d]\\n\", res[0], res[1]);\n    free(res);\n    return 0;\n}"
+        "javascript": "function twoSum(nums, target) {\n  // your code here\n}\n\nconsole.log(JSON.stringify(twoSum([2, 7, 11, 15], 9)));",
+        "python": "def two_sum(nums: list[int], target: int) -> list[int]:\n    # your code here\n    pass\n\nprint(two_sum([2, 7, 11, 15], 9))",
+        "c": "#include <stdio.h>\n#include <stdlib.h>\n\nint* twoSum(int* nums, int numsSize, int target, int* returnSize) {\n    // your code here\n    *returnSize = 0;\n    return NULL;\n}\n\nint main() {\n    int nums[] = {2, 7, 11, 15};\n    int retSize;\n    int* res = twoSum(nums, 4, 9, &retSize);\n    if (res && retSize == 2) printf(\"[%d, %d]\\n\", res[0], res[1]);\n    free(res);\n    return 0;\n}"
       },
       "testCases": [
         {
@@ -782,9 +795,9 @@
       "sampleInput": "s = \"()[]{}\"",
       "sampleOutput": "true",
       "starterCode": {
-        "javascript": "function isValid(s) {\n  const stack = [];\n  const map = { ')': '(', '}': '{', ']': '[' };\n  \n  for (const char of s) {\n    if (char === '(' || char === '{' || char === '[') {\n      stack.push(char);\n    } else {\n      if (stack.length === 0 || stack.pop() !== map[char]) {\n        return false;\n      }\n    }\n  }\n  return stack.length === 0;\n}\n\nconsole.log(isValid(\"()[]{}\"));",
-        "python": "def is_valid(s: str) -> bool:\n    stack = []\n    mapping = {')': '(', '}': '{', ']': '['}\n    for char in s:\n        if char in mapping.values():\n            stack.append(char)\n        elif char in mapping:\n            if not stack or stack.pop() != mapping[char]:\n                return False\n    return len(stack) == 0\n\nprint(is_valid(\"()[]{}\"))",
-        "c": "#include <stdio.h>\n#include <stdbool.h>\n#include <string.h>\n\nbool isValid(char* s) {\n    char stack[10000];\n    int top = -1;\n    for (int i = 0; s[i] != '\\0'; i++) {\n        char c = s[i];\n        if (c == '(' || c == '{' || c == '[') {\n            stack[++top] = c;\n        } else {\n            if (top == -1) return false;\n            char open = stack[top--];\n            if (c == ')' && open != '(') return false;\n            if (c == '}' && open != '{') return false;\n            if (c == ']' && open != '[') return false;\n        }\n    }\n    return top == -1;\n}\n\nint main() {\n    printf(\"%s\\n\", isValid(\"()[]{}\") ? \"true\" : \"false\");\n    return 0;\n}"
+        "javascript": "function isValid(s) {\n  // your code here\n}\n\nconsole.log(isValid(\"()[]{}\"));",
+        "python": "def is_valid(s: str) -> bool:\n    # your code here\n    pass\n\nprint(is_valid(\"()[]{}\"))",
+        "c": "#include <stdio.h>\n#include <stdbool.h>\n\nbool isValid(char* s) {\n    // your code here\n    return false;\n}\n\nint main() {\n    printf(\"%s\\n\", isValid(\"()[]{}\") ? \"true\" : \"false\");\n    return 0;\n}"
       },
       "testCases": [
         {
@@ -820,9 +833,9 @@
       "sampleInput": "head = [1, 2, 3, 4, 5]",
       "sampleOutput": "[5, 4, 3, 2, 1]",
       "starterCode": {
-        "javascript": "class ListNode {\n  constructor(val = 0, next = null) {\n    this.val = val;\n    this.next = next;\n  }\n}\n\nfunction reverseList(head) {\n  let prev = null;\n  let curr = head;\n  while (curr !== null) {\n    const nextTemp = curr.next;\n    curr.next = prev;\n    prev = curr;\n    curr = nextTemp;\n  }\n  return prev;\n}\n\n// Demo\nconst list = new ListNode(1, new ListNode(2, new ListNode(3)));\nlet rev = reverseList(list);\nconst res = [];\nwhile (rev) { res.push(rev.val); rev = rev.next; }\nconsole.log(JSON.stringify(res));",
-        "python": "class ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val\n        self.next = next\n\ndef reverse_list(head):\n    prev = None\n    curr = head\n    while curr:\n        next_temp = curr.next\n        curr.next = prev\n        prev = curr\n        curr = next_temp\n    return prev\n\n# Demo\nnode = ListNode(1, ListNode(2, ListNode(3)))\nr = reverse_list(node)\nres = []\nwhile r:\n    res.append(r.val)\n    r = r.next\nprint(res)",
-        "c": "#include <stdio.h>\n#include <stdlib.h>\n\nstruct ListNode {\n    int val;\n    struct ListNode *next;\n};\n\nstruct ListNode* reverseList(struct ListNode* head) {\n    struct ListNode *prev = NULL, *curr = head, *next = NULL;\n    while (curr != NULL) {\n        next = curr->next;\n        curr->next = prev;\n        prev = curr;\n        curr = next;\n    }\n    return prev;\n}\n\nint main() {\n    printf(\"[3, 2, 1]\\n\");\n    return 0;\n}"
+        "javascript": "class ListNode {\n  constructor(val = 0, next = null) {\n    this.val = val;\n    this.next = next;\n  }\n}\n\nfunction reverseList(head) {\n  // your code here\n  return head;\n}\n\n// Demo\nconst list = new ListNode(1, new ListNode(2, new ListNode(3)));\nlet rev = reverseList(list);\nconst res = [];\nwhile (rev) { res.push(rev.val); rev = rev.next; }\nconsole.log(JSON.stringify(res));",
+        "python": "class ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val\n        self.next = next\n\ndef reverse_list(head):\n    # your code here\n    return head\n\n# Demo\nnode = ListNode(1, ListNode(2, ListNode(3)))\nr = reverse_list(node)\nres = []\nwhile r:\n    res.append(r.val)\n    r = r.next\nprint(res)",
+        "c": "#include <stdio.h>\n#include <stdlib.h>\n\nstruct ListNode {\n    int val;\n    struct ListNode *next;\n};\n\nstruct ListNode* reverseList(struct ListNode* head) {\n    // your code here\n    return head;\n}\n\nint main() {\n    struct ListNode n3 = {3, NULL}, n2 = {2, &n3}, n1 = {1, &n2};\n    struct ListNode* r = reverseList(&n1);\n    printf(\"[\");\n    for (struct ListNode* p = r; p; p = p->next) printf(\"%d%s\", p->val, p->next ? \", \" : \"\");\n    printf(\"]\\n\");\n    return 0;\n}"
       },
       "testCases": [
         {
@@ -890,7 +903,7 @@
           "id": "node_4",
           "title": "LLM Orchestration & Prompt Engineering",
           "description": "LangChain, embeddings, vector search, RAG pipelines.",
-          "status": "available",
+          "status": "locked",
           "prerequisites": [
             "node_3"
           ],
@@ -961,7 +974,7 @@
           "id": "node_m4",
           "title": "Transformers & Self-Attention",
           "description": "Multi-head attention, positional encoding, BERT/GPT architecture.",
-          "status": "available",
+          "status": "locked",
           "prerequisites": [
             "node_m3"
           ],
@@ -1013,7 +1026,7 @@
       "title": "Algorithm Prodigy",
       "description": "Solve 50 coding problems in Coding Lab",
       "icon": "Code",
-      "progress": 54,
+      "progress": 50,
       "maxProgress": 50,
       "unlocked": true,
       "unlockedAt": "2026-11-06"
@@ -1041,7 +1054,7 @@
       "title": "Interview Ready",
       "description": "Complete 3 technical mock interview evaluations",
       "icon": "UserCheck",
-      "progress": 2,
+      "progress": 0,
       "maxProgress": 3,
       "unlocked": false
     }
@@ -1050,8 +1063,8 @@
     {
       "id": "demo_ai_1",
       "role": "assistant",
-      "text": "Welcome, Shashank! I am your LearnOS study assistant. Ask me about C programming, JavaScript, FEE, mathematics, or your career plan.",
-      "timestamp": "2026-11-08T17:02:17.413Z"
+      "text": "Welcome, Shashank! I am your LearnOS study assistant. Ask me about Data Structures, Operating Systems, DBMS, Computer Networks, AI/ML, or your career plan.",
+      "timestamp": "2026-09-01T09:00:00.000Z"
     }
   ]
 }

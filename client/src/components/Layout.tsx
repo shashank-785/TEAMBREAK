@@ -78,6 +78,8 @@ export const Layout: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('learnos_token');
+    localStorage.removeItem('learnos_demo_session');
+    localStorage.removeItem('learnos_demo_user');
     setUser(null);
     setOnboardingComplete(false);
   };

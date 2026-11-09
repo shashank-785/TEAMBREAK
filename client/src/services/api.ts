@@ -4,7 +4,7 @@ import {
   CodingProblem, SkillRoadmap, MockInterviewSession, Achievement 
 } from '../types';
 
-const API_BASE = '/api';
+const API_BASE = `${(import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}/api`;
 
 const nativeFetch = globalThis.fetch.bind(globalThis);
 
@@ -46,7 +46,10 @@ async function handleResponse<T>(res: Response, fallbackData: T): Promise<T> {
 export const api = {
   // Auth & Profile
   async getAuthStatus(): Promise<{ registered: boolean; onboardingComplete: boolean }> {
-    if (localStorage.getItem('learnos_token') === 'demo-static-session') {
+    if (
+      localStorage.getItem('learnos_token') === 'demo-static-session'
+      || localStorage.getItem('learnos_demo_session') === 'true'
+    ) {
       return { registered: true, onboardingComplete: true };
     }
     const res = await nativeFetch(`${API_BASE}/auth/status`);
@@ -65,6 +68,8 @@ export const api = {
     }
     const data = await authResponse(res, 'sign-up');
     localStorage.setItem('learnos_token', data.token);
+    localStorage.removeItem('learnos_demo_session');
+    localStorage.removeItem('learnos_demo_user');
     return data;
   },
   async login(email: string, password: string): Promise<{ token: string; user: User }> {
@@ -80,6 +85,8 @@ export const api = {
     }
     const data = await authResponse(res, 'login');
     localStorage.setItem('learnos_token', data.token);
+    localStorage.removeItem('learnos_demo_session');
+    localStorage.removeItem('learnos_demo_user');
     return data;
   },
   async loginAsDemo(): Promise<{ token: string; user: User }> {
@@ -92,6 +99,8 @@ export const api = {
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem('learnos_token', data.token);
+        localStorage.setItem('learnos_demo_session', 'true');
+        localStorage.setItem('learnos_demo_user', JSON.stringify(data.user));
         return data;
       }
     } catch {
@@ -116,6 +125,7 @@ export const api = {
       createdAt: '2026-11-08T00:00:00.000Z'
     };
     localStorage.setItem('learnos_token', 'demo-static-session');
+    localStorage.setItem('learnos_demo_session', 'true');
     localStorage.setItem('learnos_demo_user', JSON.stringify(demoUser));
     return { token: 'demo-static-session', user: demoUser };
   },

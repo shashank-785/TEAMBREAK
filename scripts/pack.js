@@ -1,178 +1,198 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
-import { execSync } from 'child_process';
+import archiver from 'archiver';
 import { fileURLToPath } from 'url';
+
+// Setup: npm i -D archiver
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const deliverablesDir = path.join(projectRoot, 'deliverables');
-const stagingDir = path.join(projectRoot, 'temp_staging');
 
-console.log('🚀 LearnOS Autonomous Deliverable Packaging Engine');
-console.log(`Root: ${projectRoot}`);
+// Staging project ke BAHAR (OS temp dir) -> master zip mein recursion ka chance hi nahi
+const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'learnos-staging-'));
 
-if (fs.existsSync(deliverablesDir)) {
-  fs.rmSync(deliverablesDir, { recursive: true, force: true });
+const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', 'temp_staging', 'deliverables']);
+const missing = [];
+
+function shouldSkipFile(base) {
+  if (base === '.env') return true;
+  if (base.startsWith('.env.') && base !== '.env.example') return true;
+  return base.endsWith('.log') || base.endsWith('.zip');
 }
-fs.mkdirSync(deliverablesDir, { recursive: true });
 
-if (fs.existsSync(stagingDir)) {
-  fs.rmSync(stagingDir, { recursive: true, force: true });
+function isInside(child, parent) {
+  const rel = path.relative(path.resolve(parent), path.resolve(child));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
-fs.mkdirSync(stagingDir, { recursive: true });
 
 function copyFiltered(src, dest) {
-  if (!fs.existsSync(src)) return;
-  const stat = fs.statSync(src);
+  if (!fs.existsSync(src)) {
+    missing.push(path.relative(projectRoot, src));
+    console.warn(`  ⚠️  Missing: ${path.relative(projectRoot, src)}`);
+    return;
+  }
+
+  // Guard: destination source ke andar ho to infinite copy loop banega
+  if (isInside(dest, src) && path.resolve(dest) !== path.resolve(src)) return;
+  if (isInside(src, stagingDir) || isInside(src, deliverablesDir)) return;
+
+  const stat = fs.lstatSync(src);
+  if (stat.isSymbolicLink()) return; // symlink loops se bacho
+
   if (stat.isDirectory()) {
-    const base = path.basename(src);
-    if (base === 'node_modules' || base === 'dist' || base === '.git' || base === 'temp_staging' || base === 'deliverables') {
-      return;
-    }
+    if (SKIP_DIRS.has(path.basename(src))) return;
     fs.mkdirSync(dest, { recursive: true });
-    const entries = fs.readdirSync(src);
-    for (const entry of entries) {
+    for (const entry of fs.readdirSync(src)) {
       copyFiltered(path.join(src, entry), path.join(dest, entry));
     }
   } else {
-    const base = path.basename(src);
-    if (base === '.env' || base.endsWith('.log') || base.endsWith('.zip')) {
-      return;
-    }
+    if (shouldSkipFile(path.basename(src))) return;
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.copyFileSync(src, dest);
   }
 }
 
+function countFiles(dir) {
+  if (!fs.existsSync(dir)) return 0;
+  let n = 0;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    n += entry.isDirectory() ? countFiles(full) : 1;
+  }
+  return n;
+}
+
 function makeZip(zipName, stageSubdir) {
-  const sourcePath = path.join(stagingDir, stageSubdir);
-  const targetZip = path.join(deliverablesDir, `${zipName}.zip`);
-  
-  // Use PowerShell Compress-Archive with ProgressPreference SilentlyContinue
-  const cmd = `powershell -NoProfile -Command "$ProgressPreference = 'SilentlyContinue'; Compress-Archive -Path '${sourcePath}\\*' -DestinationPath '${targetZip}' -Force"`;
-  execSync(cmd, { stdio: 'inherit' });
-  
-  // Copy to root as well
-  fs.copyFileSync(targetZip, path.join(projectRoot, `${zipName}.zip`));
-  const sizeKb = Math.round(fs.statSync(targetZip).size / 1024);
-  console.log(`  ✅ ${zipName}.zip (${sizeKb} KB)`);
+  return new Promise((resolve, reject) => {
+    const sourcePath = path.join(stagingDir, stageSubdir);
+    const targetZip = path.join(deliverablesDir, `${zipName}.zip`);
+
+    if (countFiles(sourcePath) === 0) {
+      console.warn(`  ⚠️  ${zipName}.zip skip kiya: staging khaali hai`);
+      return resolve(false);
+    }
+
+    const output = fs.createWriteStream(targetZip);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    output.on('close', () => {
+      fs.copyFileSync(targetZip, path.join(projectRoot, `${zipName}.zip`));
+      console.log(`  ✅ ${zipName}.zip (${Math.round(archive.pointer() / 1024)} KB)`);
+      resolve(true);
+    });
+    archive.on('warning', (err) => console.warn('  ⚠️ ', err.message));
+    archive.on('error', reject);
+    output.on('error', reject);
+
+    archive.pipe(output);
+    archive.directory(sourcePath, false);
+    archive.finalize();
+  });
 }
 
-// 1. ATLAS_LearnOS.zip
-console.log('📦 Building ATLAS_LearnOS.zip...');
-const atlasStage = path.join(stagingDir, 'ATLAS');
-fs.mkdirSync(atlasStage, { recursive: true });
-copyFiltered(path.join(projectRoot, 'agents/ATLAS/README.md'), path.join(atlasStage, 'README.md'));
-copyFiltered(path.join(projectRoot, 'README.md'), path.join(atlasStage, 'PROJECT_README.md'));
-const atlasPaths = [
-  'client/src/components',
-  'client/src/pages/Dashboard',
-  'client/src/pages/AIAssistant',
-  'client/src/pages/Analytics',
-  'client/src/pages/ProfileSettings',
-  'client/src/App.tsx',
-  'client/src/main.tsx',
-  'client/src/types',
-  'client/src/services',
-  'client/package.json',
-  'client/tsconfig.json',
-  'client/vite.config.ts',
-  'client/tailwind.config.js'
+const agents = [
+  {
+    name: 'ATLAS',
+    paths: [
+      'client/src/components',
+      'client/src/pages/Dashboard',
+      'client/src/pages/AIAssistant',
+      'client/src/pages/Analytics',
+      'client/src/pages/ProfileSettings',
+      'client/src/App.tsx',
+      'client/src/main.tsx',
+      'client/src/types',
+      'client/src/services',
+      'client/package.json',
+      'client/tsconfig.json',
+      'client/vite.config.ts',
+      'client/tailwind.config.js',
+    ],
+  },
+  {
+    name: 'NOVA',
+    paths: [
+      'client/src/pages/CollegeTutor',
+      'client/src/pages/Notes',
+      'client/src/pages/ExamCentre',
+      'server/src/routes/tutor.ts',
+      'server/src/routes/notes.ts',
+      'server/src/routes/exams.ts',
+      'server/src/types',
+    ],
+  },
+  {
+    name: 'ORBIT',
+    paths: ['client/src/pages/StudyPlanner', 'server/src/routes/planner.ts', 'server/src/types'],
+  },
+  {
+    name: 'FORGE',
+    paths: [
+      'client/src/pages/CodingLab',
+      'client/src/pages/SkillDevelopment',
+      'server/src/routes/coding.ts',
+      'server/src/routes/skills.ts',
+      'server/src/services/codeExecutionService.ts',
+      'server/src/types',
+    ],
+  },
+  {
+    name: 'KERNEL',
+    paths: ['server/src', 'server/package.json', 'server/tsconfig.json'],
+  },
+  {
+    name: 'SENTINEL',
+    paths: ['server/test', 'server/src/routes/system.ts'],
+  },
 ];
-for (const p of atlasPaths) {
-  copyFiltered(path.join(projectRoot, p), path.join(atlasStage, p));
+
+async function main() {
+  console.log('🚀 LearnOS Autonomous Deliverable Packaging Engine');
+  console.log(`Root: ${projectRoot}`);
+
+  fs.rmSync(deliverablesDir, { recursive: true, force: true });
+  fs.mkdirSync(deliverablesDir, { recursive: true });
+
+  for (const agent of agents) {
+    console.log(`📦 Building ${agent.name}_LearnOS.zip...`);
+    const stage = path.join(stagingDir, agent.name);
+    fs.mkdirSync(stage, { recursive: true });
+
+    copyFiltered(path.join(projectRoot, 'agents', agent.name, 'README.md'), path.join(stage, 'README.md'));
+    copyFiltered(path.join(projectRoot, 'README.md'), path.join(stage, 'PROJECT_README.md'));
+    for (const p of agent.paths) {
+      copyFiltered(path.join(projectRoot, p), path.join(stage, p));
+    }
+    await makeZip(`${agent.name}_LearnOS`, agent.name);
+  }
+
+  console.log('⭐ Building LearnOS_Complete_Project.zip...');
+  const masterStage = path.join(stagingDir, 'Master');
+  fs.mkdirSync(masterStage, { recursive: true });
+  copyFiltered(projectRoot, masterStage);
+  await makeZip('LearnOS_Complete_Project', 'Master');
+
+  const files = fs.readdirSync(deliverablesDir);
+  console.log(`\n🎉 ${files.length} deliverable ZIP package(s) ban gaye:`);
+  for (const f of files) {
+    const size = Math.round(fs.statSync(path.join(deliverablesDir, f)).size / 1024);
+    console.log(`  - ${f} (${size} KB)`);
+  }
+
+  if (missing.length) {
+    console.warn(`\n⚠️  ${missing.length} path(s) missing the (check karo):`);
+    for (const m of [...new Set(missing)]) console.warn(`  - ${m}`);
+  }
 }
-makeZip('ATLAS_LearnOS', 'ATLAS');
 
-// 2. NOVA_LearnOS.zip
-console.log('📦 Building NOVA_LearnOS.zip...');
-const novaStage = path.join(stagingDir, 'NOVA');
-fs.mkdirSync(novaStage, { recursive: true });
-copyFiltered(path.join(projectRoot, 'agents/NOVA/README.md'), path.join(novaStage, 'README.md'));
-copyFiltered(path.join(projectRoot, 'README.md'), path.join(novaStage, 'PROJECT_README.md'));
-const novaPaths = [
-  'client/src/pages/CollegeTutor',
-  'client/src/pages/Notes',
-  'client/src/pages/ExamCentre',
-  'server/src/routes/tutor.ts',
-  'server/src/routes/notes.ts',
-  'server/src/routes/exams.ts',
-  'server/src/types'
-];
-for (const p of novaPaths) {
-  copyFiltered(path.join(projectRoot, p), path.join(novaStage, p));
-}
-makeZip('NOVA_LearnOS', 'NOVA');
-
-// 3. ORBIT_LearnOS.zip
-console.log('📦 Building ORBIT_LearnOS.zip...');
-const orbitStage = path.join(stagingDir, 'ORBIT');
-fs.mkdirSync(orbitStage, { recursive: true });
-copyFiltered(path.join(projectRoot, 'agents/ORBIT/README.md'), path.join(orbitStage, 'README.md'));
-copyFiltered(path.join(projectRoot, 'README.md'), path.join(orbitStage, 'PROJECT_README.md'));
-const orbitPaths = [
-  'client/src/pages/StudyPlanner',
-  'server/src/routes/planner.ts',
-  'server/src/types'
-];
-for (const p of orbitPaths) {
-  copyFiltered(path.join(projectRoot, p), path.join(orbitStage, p));
-}
-makeZip('ORBIT_LearnOS', 'ORBIT');
-
-// 4. FORGE_LearnOS.zip
-console.log('📦 Building FORGE_LearnOS.zip...');
-const forgeStage = path.join(stagingDir, 'FORGE');
-fs.mkdirSync(forgeStage, { recursive: true });
-copyFiltered(path.join(projectRoot, 'agents/FORGE/README.md'), path.join(forgeStage, 'README.md'));
-copyFiltered(path.join(projectRoot, 'README.md'), path.join(forgeStage, 'PROJECT_README.md'));
-const forgePaths = [
-  'client/src/pages/CodingLab',
-  'client/src/pages/SkillDevelopment',
-  'server/src/routes/coding.ts',
-  'server/src/routes/skills.ts',
-  'server/src/services/codeExecutionService.ts',
-  'server/src/types'
-];
-for (const p of forgePaths) {
-  copyFiltered(path.join(projectRoot, p), path.join(forgeStage, p));
-}
-makeZip('FORGE_LearnOS', 'FORGE');
-
-// 5. KERNEL_LearnOS.zip
-console.log('📦 Building KERNEL_LearnOS.zip...');
-const kernelStage = path.join(stagingDir, 'KERNEL');
-fs.mkdirSync(kernelStage, { recursive: true });
-copyFiltered(path.join(projectRoot, 'agents/KERNEL/README.md'), path.join(kernelStage, 'README.md'));
-copyFiltered(path.join(projectRoot, 'README.md'), path.join(kernelStage, 'PROJECT_README.md'));
-copyFiltered(path.join(projectRoot, 'server/src'), path.join(kernelStage, 'server/src'));
-copyFiltered(path.join(projectRoot, 'server/package.json'), path.join(kernelStage, 'server/package.json'));
-copyFiltered(path.join(projectRoot, 'server/tsconfig.json'), path.join(kernelStage, 'server/tsconfig.json'));
-makeZip('KERNEL_LearnOS', 'KERNEL');
-
-// 6. SENTINEL_LearnOS.zip
-console.log('📦 Building SENTINEL_LearnOS.zip...');
-const sentinelStage = path.join(stagingDir, 'SENTINEL');
-fs.mkdirSync(sentinelStage, { recursive: true });
-copyFiltered(path.join(projectRoot, 'agents/SENTINEL/README.md'), path.join(sentinelStage, 'README.md'));
-copyFiltered(path.join(projectRoot, 'README.md'), path.join(sentinelStage, 'PROJECT_README.md'));
-copyFiltered(path.join(projectRoot, 'server/test'), path.join(sentinelStage, 'server/test'));
-copyFiltered(path.join(projectRoot, 'server/src/routes/system.ts'), path.join(sentinelStage, 'server/src/routes/system.ts'));
-makeZip('SENTINEL_LearnOS', 'SENTINEL');
-
-// 7. LearnOS_Complete_Project.zip (Master Project)
-console.log('⭐ Building LearnOS_Complete_Project.zip...');
-const masterStage = path.join(stagingDir, 'Master');
-fs.mkdirSync(masterStage, { recursive: true });
-copyFiltered(projectRoot, masterStage);
-makeZip('LearnOS_Complete_Project', 'Master');
-
-// Cleanup
-fs.rmSync(stagingDir, { recursive: true, force: true });
-
-console.log('\n🎉 Successfully created all 7 deliverable ZIP packages:');
-for (const f of fs.readdirSync(deliverablesDir)) {
-  const size = Math.round(fs.statSync(path.join(deliverablesDir, f)).size / 1024);
-  console.log(`  - ${f} (${size} KB)`);
-}
+main()
+  .catch((err) => {
+    console.error('❌ Packaging fail ho gayi:', err);
+    process.exitCode = 1;
+  })
+  .finally(() => {
+    fs.rmSync(stagingDir, { recursive: true, force: true });
+  });
