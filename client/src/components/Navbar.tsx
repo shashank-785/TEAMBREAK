@@ -44,12 +44,12 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onOpenQuickAsk, onLogout, 
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[#232936] bg-[#0B0D12]/90 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-[var(--border)] bg-[var(--app-bg)]/90 px-4 backdrop-blur-md sm:px-6 lg:px-8">
       <button
         type="button"
         onClick={onMenuToggle}
         aria-label="Open navigation menu"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#232936] text-[#94A3B8] transition hover:border-indigo-500/40 hover:text-white md:hidden"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition hover:border-violet-300 hover:text-[var(--text-primary)] md:hidden"
       >
         <Menu size={19} />
       </button>
@@ -63,7 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onOpenQuickAsk, onLogout, 
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search LearnOS..."
           aria-label="Search LearnOS"
-          className="w-full rounded-xl border border-[#232936] bg-[#151923] py-2.5 pl-10 pr-10 text-xs text-[#F8FAFC] transition-colors placeholder:text-[#94A3B8]/60 focus:border-indigo-500 focus:outline-none sm:py-2"
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] py-2.5 pl-10 pr-10 text-xs text-[var(--text-primary)] transition-colors placeholder:text-[var(--text-muted)]/70 focus:border-violet-400 focus:outline-none sm:py-2"
         />
         <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-slate-700 bg-[#232936] px-1.5 py-0.5 font-mono text-[10px] text-[#94A3B8] sm:block">
           /
@@ -77,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onOpenQuickAsk, onLogout, 
           onClick={onToggleTheme}
           aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#232936] bg-[#151923] text-amber-300 transition hover:border-indigo-500/40 sm:h-9 sm:w-9"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-amber-500 transition hover:border-violet-300 sm:h-9 sm:w-9"
         >
           {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
         </button>

@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --app-bg: #f0effa;
+  --surface: #ffffff;
+  --surface-alt: #f8f6ff;
+  --border: #e6e2f0;
+  --text-primary: #27243b;
+  --text-muted: #79758d;
+  --accent: #6b58d6;
+  --accent-soft: #efedff;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --app-bg: #0b0d12;
+  --surface: #151923;
+  --surface-alt: #1c2230;
+  --border: #232936;
+  --text-primary: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #818cf8;
+  --accent-soft: #242248;
+}
+
 @layer base {
   html {
     min-width: 320px;
@@ -9,8 +33,8 @@
   }
 
   body {
-    background-color: #0B0D12;
-    color: #F8FAFC;
+    background-color: var(--app-bg);
+    color: var(--text-primary);
     font-family: 'Inter', sans-serif;
     min-width: 320px;
     min-height: 100vh;
@@ -61,8 +85,8 @@
 
 /* Card glass / subtle borders */
 .learnos-card {
-  background-color: #151923;
-  border: 1px solid #232936;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
 }
 
@@ -71,8 +95,8 @@
 }
 
 .learnos-card-hover:hover {
-  background-color: #1a1f2c;
-  border-color: #313a4d;
+  background-color: var(--surface-alt);
+  border-color: var(--accent);
 }
 
 html[data-theme='light'] body {

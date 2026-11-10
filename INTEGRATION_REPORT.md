@@ -6,7 +6,7 @@ LearnOS is an npm monorepo with a React/Vite client and Express server.
 
 - Root package: workspace orchestration
 - Client package: React 18, TypeScript, Vite 5, Tailwind CSS 3
-- Server package: Express, TypeScript, local JSON persistence
+- Server package: Express, TypeScript, single-user JSON persistence, local llama.cpp inference through `node-llama-cpp`
 
 ## Current module routing
 
@@ -31,6 +31,13 @@ LearnOS is an npm monorepo with a React/Vite client and Express server.
 6. Add persistent domain records to the JSON database schema and seed data in coordinated changes.
 7. Register exactly one route in `App.tsx`.
 8. Update sidebar navigation in one place only.
+
+## Current architecture limits
+
+- The database is a single shared JSON file; it is not multi-user storage and does not provide per-user ownership isolation.
+- The AI runtime is local to the backend host. Model weights are installed once outside the repository with `npm run setup:model`; no external AI inference API is used.
+- Document context currently uses keyword matching against note text, not vector embeddings or a document-ingestion pipeline.
+- Code execution requires a configured isolated sandbox service; it is unavailable by default.
 
 ## Module integration checklist
 

@@ -64,16 +64,6 @@ router.post('/login', (req: Request, res: Response) => {
 
 });
 
-router.post('/demo', (_req: Request, res: Response) => {
-  const user = db.getUser();
-  res.json({
-    success: true,
-    demo: true,
-    token: createSessionToken(user.id, 'demo@learnos.app'),
-    user
-  });
-});
-
 router.get('/me', requireAuth, (_req: AuthRequest, res: Response) => {
   res.json({ success: true, user: db.getUser() });
 });

@@ -11,11 +11,12 @@ import skillsRoutes from './routes/skills.js';
 import aiRoutes from './routes/ai.js';
 import analyticsRoutes from './routes/analytics.js';
 import systemRoutes from './routes/system.js';
-import { requireAuth } from './middleware/auth.js';
+import { assertAuthConfiguration, isPublicApiRequest, requireAuth } from './middleware/auth.js';
 import { rateLimitWrites, validateJsonPayload } from './middleware/security.js';
 import { aiService } from './services/aiService.js';
 
 dotenv.config();
+assertAuthConfiguration();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -40,8 +41,7 @@ app.use(validateJsonPayload);
 app.use(rateLimitWrites);
 
 app.use('/api', (req, res, next) => {
-  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
-  if (req.path.startsWith('/auth/login') || req.path.startsWith('/auth/register') || req.path.startsWith('/auth/demo') || req.path.startsWith('/auth/status') || req.path.startsWith('/system/')) return next();
+  if (isPublicApiRequest(req.method, req.path)) return next();
   return requireAuth(req, res, next);
 });
 
@@ -99,8 +99,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // Start Server
-app.listen(PORT, async () => {
-  const aiStatus = await aiService.getStatus();
+const server = app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                      LEARNOS BACKEND SERVER                   ║
@@ -108,8 +107,33 @@ app.listen(PORT, async () => {
 ╚═══════════════════════════════════════════════════════════════╝
   🚀 Server running on: http://localhost:${PORT}
   📡 API Health Check:  http://localhost:${PORT}/api/system/health
-  🤖 AI Engine:         ${aiStatus.isReady ? `Ready (${aiStatus.provider})` : `Unavailable (${aiStatus.error})`}
-  💻 Sandboxed Runner:  External Piston service (configure PISTON_API_URL)
+  🤖 AI Engine:         Local llama.cpp runtime
+  💻 Sandboxed Runner:  ${process.env.PISTON_API_URL ? 'Configured isolated execution service' : 'Unavailable (no isolated execution service configured)'}
   💾 Persistence:       Active
   `);
+  void aiService.initialize()
+    .catch(error => console.error('[AI] Local model initialization failed:', error))
+    .finally(async () => {
+      const aiStatus = await aiService.getStatus();
+      console.log(`[AI] ${aiStatus.isReady ? `Ready (${aiStatus.model})` : `Unavailable (${aiStatus.error})`}`);
+    });
 });
+
+async function shutdown(signal: string) {
+  console.log(`[Server] ${signal} received; stopping HTTP server and releasing AI resources.`);
+  server.close(async error => {
+    if (error) {
+      console.error('[Server] Failed to close HTTP server cleanly:', error);
+      process.exitCode = 1;
+    }
+    try {
+      await aiService.dispose();
+    } catch (disposeError) {
+      console.error('[AI] Failed to release local model resources:', disposeError);
+      process.exitCode = 1;
+    }
+  });
+}
+
+process.once('SIGINT', () => { void shutdown('SIGINT'); });
+process.once('SIGTERM', () => { void shutdown('SIGTERM'); });

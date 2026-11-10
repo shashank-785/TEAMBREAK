@@ -21,7 +21,7 @@ export const Layout: React.FC = () => {
   const [onboardingCompleteBackend, setOnboardingCompleteBackend] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (
-    localStorage.getItem('learnos_theme') === 'light' ? 'light' : 'dark'
+    localStorage.getItem('learnos_theme') === 'dark' ? 'dark' : 'light'
   ));
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export const Layout: React.FC = () => {
     let active = true;
     Promise.all([
       api.getAuthStatus().catch(() => ({ registered: false, onboardingComplete: false })),
-      api.getMe().catch(() => null)
+      localStorage.getItem('learnos_token') ? api.getMe().catch(() => null) : Promise.resolve(null)
     ]).then(([status, currentUser]) => {
       if (!active) return;
       setRegistered(status.registered);
@@ -78,13 +78,11 @@ export const Layout: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('learnos_token');
-    localStorage.removeItem('learnos_demo_session');
-    localStorage.removeItem('learnos_demo_user');
     setUser(null);
     setOnboardingComplete(false);
   };
 
-  if (!authChecked) return <div className="min-h-screen bg-[#0B0D12]" />;
+  if (!authChecked) return <div className="min-h-screen bg-[var(--app-bg)]" />;
   if (!user) return <Login onLogin={currentUser => {
     setUser(currentUser);
     api.getAuthStatus().then(status => {
@@ -97,32 +95,19 @@ export const Layout: React.FC = () => {
     setUser(currentUser);
     setOnboardingComplete(false);
     setOnboardingCompleteBackend(false);
-  }} onDemo={demoUser => {
-    setUser(demoUser);
-    setRegistered(true);
-    setOnboardingComplete(true);
-    setOnboardingCompleteBackend(true);
   }} />;
-  const enterDemo = () => {
-    api.loginAsDemo().then(demo => {
-      setUser(demo.user);
-      setRegistered(true);
-      setOnboardingComplete(true);
-      setOnboardingCompleteBackend(true);
-    });
-  };
 
-  if (registered && !onboardingCompleteBackend && !onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} onDemo={enterDemo} />;
-  if (!onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} onDemo={enterDemo} />;
+  if (registered && !onboardingCompleteBackend && !onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} />;
+  if (!onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} />;
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden bg-[#0B0D12] text-[#F8FAFC]">
+    <div className="flex min-h-screen overflow-x-hidden bg-[var(--app-bg)] text-[var(--text-primary)]">
       {isMobileSidebarOpen && (
         <button
           type="button"
           aria-label="Close navigation menu"
           onClick={() => setIsMobileSidebarOpen(false)}
-          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-30 bg-slate-950/30 backdrop-blur-sm md:hidden"
         />
       )}
 
@@ -132,7 +117,7 @@ export const Layout: React.FC = () => {
         onNavigate={() => setIsMobileSidebarOpen(false)}
       />
 
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col bg-[#0B0D12] md:ml-64">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col bg-[var(--app-bg)] md:ml-64">
         <Navbar
           user={user}
           onOpenQuickAsk={() => setIsQuickAskOpen(true)}

@@ -1,11 +1,10 @@
 # LearnOS — AI-Powered Autonomous Student Learning & Career Platform
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-[![Tests Status](https://img.shields.io/badge/tests-10%2F10%20passing-brightgreen.svg)]()
 [![Platform](https://img.shields.io/badge/platform-React%2018%20%7C%20Vite%20%7C%20Node.js%20%7C%20Express-indigo.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
 
-LearnOS is an autonomous, full-stack student learning and career acceleration platform designed for university computer science engineering students. Built with a modern dark interface, offline-first fallback capabilities, zero-cost architecture, and pedagogical AI co-pilots.
+LearnOS is a student learning and career development workspace built with React, TypeScript, Vite, Node.js, and Express. Its AI tutor uses an open-weight model through an in-process llama.cpp runtime; it does not call an external inference API.
 
 ---
 
@@ -36,7 +35,7 @@ The application was engineered with 6 isolated agent responsibilities:
 | **NOVA** | Academic Core & Documents | College Tutor (2), Notes & Documents (4), Exam Centre (5) |
 | **ORBIT** | Productivity & Study Cycles | Study Planner (3), Timetable Grid, Spaced Repetition, Pomodoro Timer |
 | **FORGE** | Coding & Career Development | Coding Lab (6), Sandbox Execution, Skill Trees (7), AI Mock Interview |
-| **KERNEL** | Backend, Database & AI Core | Express Server, Supabase & SQLite DB, Academic AI Engine, Execution Sandbox |
+| **KERNEL** | Backend, Database & AI Core | Express API, single-user JSON persistence, local llama.cpp inference |
 | **SENTINEL** | Security, Testing & Health | Test Harness (`api.test.ts`), Health Probes, Package Validator |
 
 ---
@@ -59,7 +58,7 @@ The application was engineered with 6 isolated agent responsibilities:
 ## 🚀 Quick Start Guide
 
 ### Prerequisites
-- Node.js (v18.0.0 or higher, tested on v24)
+- Node.js (v20.0.0 or higher)
 - npm (v9.0.0 or higher)
 
 ### Installation
@@ -67,9 +66,8 @@ The application was engineered with 6 isolated agent responsibilities:
 # Clone the repository and enter the directory
 cd learnos
 
-# Install dependencies for both client and server
-npm install --prefix client
-npm install --prefix server
+# Install the locked client and server dependencies
+npm ci
 ```
 
 ### Running Locally
@@ -86,19 +84,24 @@ npm run dev:client
 - Backend Health Check: **`http://localhost:5000/api/system/health`**
 
 ### Coding language runtimes
-The Coding Lab lists languages and versions available from the configured Piston instance. Set `PISTON_API_URL` in the server environment to the Piston `/api/v2/execute` endpoint; the matching `/api/v2/runtimes` endpoint is used to populate the language picker. Only runtimes installed on that instance can be selected and executed.
+Code execution is unavailable unless an isolated execution service is configured. The current backend can use a Piston-compatible endpoint via `PISTON_API_URL`; the application does not execute submitted code in its own Node.js process. This optional integration still depends on a separate service and is not part of the self-contained AI runtime.
 
-### LearnOS AI 1.0 (local Ollama)
-The AI Tutor uses Ollama on the LearnOS host; students do not need API keys or external AI accounts. A 3B quantized model is a good fit for a machine with 8 GB or more RAM. This project was checked on Windows 11 with a Ryzen 7 7730U, 15.3 GB RAM, and integrated Radeon graphics; `qwen2.5:3b` is the configured default and can run on CPU, though response speed depends on the machine.
+### LearnOS local AI engine
 
-1. Install Ollama from [ollama.com/download](https://ollama.com/download) and start it.
-2. In PowerShell, download the model: `ollama pull qwen2.5:3b`. The model is not bundled with LearnOS.
-3. Copy `server/.env.example` to `server/.env`, keeping `OLLAMA_API_URL=http://127.0.0.1:11434/api/chat` and `OLLAMA_MODEL=qwen2.5:3b` unless you intentionally choose a different installed model.
-4. Start LearnOS using the commands above. The AI Tutor's status shows whether Ollama is reachable and the selected model is installed.
+The backend runs [llama.cpp](https://github.com/ggml-org/llama.cpp) through the maintained [`node-llama-cpp`](https://github.com/withcatai/node-llama-cpp) Node integration. The default model is **Qwen3-1.7B Q8_0 GGUF** from [Qwen/Qwen3-1.7B-GGUF](https://huggingface.co/Qwen/Qwen3-1.7B-GGUF), licensed under **Apache-2.0**. Its model file is about **1.83 GB**. This compact model can answer common study questions, but it is not equivalent to a large hosted model and can make mistakes.
 
-The assistant stores conversations locally in `server/data/learnos.json` and can use relevant text from notes imported into LearnOS. For public deployment, Ollama must run on a server reachable by the backend; a developer's localhost model is not available to deployed users. Protect that server endpoint and use a reverse proxy/firewall appropriate to your deployment.
+The runtime package and platform binary are installed with the LearnOS server dependencies. Download the model once from the LearnOS project root:
 
-The GitHub Pages frontend is published from `docs/` and uses `VITE_API_URL` from `client/.env.production` to reach the deployed Express API. The API must allow `https://shashank-785.github.io` in CORS; AI is available only when Ollama is running on a host reachable by that backend. If the API is unavailable, visitors can still enter the browser-persisted demo workspace, but server-backed account and AI features require the backend. Run `npm run publish:pages` to build and copy the app, including a GitHub Pages SPA fallback so direct links and refreshes work; commit and push the updated `docs/` directory to publish it.
+```bash
+npm ci
+npm run setup:model
+```
+
+The setup process verifies the file size and SHA-256 checksum and stores the weights under `~/.learnos/models/` (outside the Git repository). After setup, inference runs locally and can work offline. No Ollama installation, account, or API key is required. Set `LEARNOS_MODEL_PATH` to use another absolute model path, or `LEARNOS_GPU=disabled` to force CPU-only inference (`auto` is the default GPU selection).
+
+**Hardware:** 8 GB system RAM minimum; 16 GB recommended. Allow at least 2 GB of disk space for the weights and additional free memory for the OS, model context, and application. CPU inference is supported; throughput depends on the CPU. The server serializes generation to bound memory use. For a self-hosted web deployment, install the model on the backend host; browser-only hosting such as GitHub Pages cannot run the API or model.
+
+For development, copy `server/.env.example` to `server/.env` and set `AUTH_SECRET` to a generated random value of at least 32 bytes (for example, `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`). The server refuses to start with a missing or example secret. The optional GitHub Pages frontend at `docs/` still requires a separately deployed Express backend for server-backed features; it does not include model weights.
 
 ### Building for Production
 ```bash
@@ -115,5 +118,7 @@ npm test
 ---
 
 ## 🔒 Security & Privacy
-- Zero client-side API key leakage. All LLM and Supabase calls are proxied securely through the Node.js backend.
-- Standalone execution: Operates 100% self-contained using its built-in Academic Reasoning Engine and local sandbox runner even when offline or without external API keys.
+- No AI provider API keys are used; prompts are processed by the configured local model on the LearnOS backend host.
+- Private account-data API routes require a signed session; the anonymous shared demo-token route has been removed.
+- Current storage remains a single-user JSON database, not production-grade multi-user persistence. Do not expose this version as a multi-user service until database ownership isolation and migrations are implemented.
+- Code execution requires a separately configured isolated execution service. LearnOS does not execute submitted code in its Express process.

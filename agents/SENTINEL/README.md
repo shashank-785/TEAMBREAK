@@ -12,13 +12,14 @@
   * Quizzes and Flashcard retrieval
   * JavaScript Sandbox Execution (Two Sum Logic)
   * Problem Test Cases Evaluation Runner
-  * AI Pedagogical Response Generator
-  * Skill Roadmaps & Interview Evaluator
+  * Local AI readiness and setup error reporting; actual inference is exercised only when model weights are installed.
+  * Skill Roadmaps and local interview-evaluation availability
   * Achievements System integrity
 - **Security Audit**:
-  * Zero frontend API key leakage: Gemini and Supabase secrets remain isolated on backend.
-  * Input sanitization and bounded execution timeouts (prevents event loop lockup).
-  * Safe sandboxed code execution boundaries.
+  * Private account-data routes require authenticated sessions; the public shared demo-token route was removed.
+  * Input validation and bounded AI generation timeouts.
+  * Code execution is not available without an isolated sandbox service.
+  * Multi-user ownership isolation is not implemented; JSON storage remains single-user only.
 - **Diagnostics Health API**:
   * `/api/system/health` live audit probes for database, AI engine, and code runners.
 
@@ -37,12 +38,12 @@
   ✅ PASS: Quizzes and Flashcards Retrieval
   ✅ PASS: JavaScript Sandbox Execution (Two Sum Logic)
   ✅ PASS: Problem Test Cases Evaluation Runner
-  ✅ PASS: AI Pedagogical Response Generator
-  ✅ PASS: Skill Roadmaps & Interview Evaluator
+  ✅ PASS: AI status accurately reports local model readiness
+  ✅ PASS: Skill Roadmaps and local interview evaluation availability
   ✅ PASS: Achievements System
 
 ========================================
-Total: 10 | Passed: 10 | Failed: 0
+Total: 11 | Passed: 11 | Failed: 0
 ========================================
 ```
 
