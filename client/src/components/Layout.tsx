@@ -78,6 +78,8 @@ export const Layout: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('learnos_token');
+    localStorage.removeItem('learnos_demo_session');
+    localStorage.removeItem('learnos_demo_user');
     setUser(null);
     setOnboardingComplete(false);
   };
@@ -95,6 +97,11 @@ export const Layout: React.FC = () => {
     setUser(currentUser);
     setOnboardingComplete(false);
     setOnboardingCompleteBackend(false);
+  }} onDemo={demoUser => {
+    setUser(demoUser);
+    setRegistered(true);
+    setOnboardingComplete(true);
+    setOnboardingCompleteBackend(true);
   }} />;
 
   if (registered && !onboardingCompleteBackend && !onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} />;

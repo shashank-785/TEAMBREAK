@@ -54,8 +54,25 @@ async function handleResponse<T>(res: Response, fallbackData: T): Promise<T> {
 export const api = {
   // Auth & Profile
   async getAiSetupStatus(): Promise<AiSetupStatus> {
-    const res = await nativeFetch(`${API_BASE}/system/ai-status`);
-    if (!res.ok) throw new Error(`AI setup status request failed (HTTP ${res.status}).`);
+    let res: Response;
+    try {
+      res = await nativeFetch(`${API_BASE}/system/ai-status`);
+    } catch {
+      throw new Error(
+        'The LearnOS backend could not be reached from this page. The backend may need redeployment with CORS_ORIGINS=https://shashank-785.github.io. This is a server issue; you do not need to install an AI app.'
+      );
+    }
+    if (res.status === 404) {
+      throw new Error(
+        'The deployed LearnOS backend is outdated and does not have the AI status endpoint. Redeploy the latest main branch to the backend host.'
+      );
+    }
+    if (!res.ok) {
+      const error = await res.json().catch(() => null) as { error?: string } | null;
+      throw new Error(
+        error?.error || `The LearnOS backend returned HTTP ${res.status} while checking AI setup. Check the backend deployment and logs.`
+      );
+    }
     const data = await res.json() as { success?: boolean } & AiSetupStatus;
     if (data.success !== true || typeof data.isReady !== 'boolean' || typeof data.setupRequired !== 'boolean' || typeof data.message !== 'string') {
       throw new Error('The LearnOS server returned an invalid AI setup status.');
@@ -63,6 +80,9 @@ export const api = {
     return data;
   },
   async getAuthStatus(): Promise<{ registered: boolean; onboardingComplete: boolean }> {
+    if (localStorage.getItem('learnos_demo_session') === 'true') {
+      return { registered: true, onboardingComplete: true };
+    }
     const res = await nativeFetch(`${API_BASE}/auth/status`);
     return res.ok ? res.json() : { registered: false, onboardingComplete: false };
   },
@@ -79,6 +99,8 @@ export const api = {
     }
     const data = await authResponse(res, 'sign-up');
     localStorage.setItem('learnos_token', data.token);
+    localStorage.removeItem('learnos_demo_session');
+    localStorage.removeItem('learnos_demo_user');
     return data;
   },
   async login(email: string, password: string): Promise<{ token: string; user: User }> {
@@ -94,9 +116,43 @@ export const api = {
     }
     const data = await authResponse(res, 'login');
     localStorage.setItem('learnos_token', data.token);
+    localStorage.removeItem('learnos_demo_session');
+    localStorage.removeItem('learnos_demo_user');
     return data;
   },
+  async loginAsDemo(): Promise<{ token: string; user: User }> {
+    const user: User = {
+      id: 'usr_learnos_demo',
+      name: 'LearnOS Demo Student',
+      email: 'demo@learnos.app',
+      university: 'LearnOS Demo University',
+      major: 'B.Tech Computer Science',
+      semester: 3,
+      targetGpa: 9,
+      currentGpa: 8.2,
+      dreamRole: 'Software Engineer',
+      streakDays: 6,
+      totalStudyHours: 24,
+      quizzesCompleted: 12,
+      problemsSolved: 32,
+      avatarUrl: '',
+      createdAt: new Date().toISOString()
+    };
+    localStorage.setItem('learnos_token', 'demo-static-session');
+    localStorage.setItem('learnos_demo_session', 'true');
+    localStorage.setItem('learnos_demo_user', JSON.stringify(user));
+    return { token: 'demo-static-session', user };
+  },
   async getMe(): Promise<User | null> {
+    if (localStorage.getItem('learnos_demo_session') === 'true') {
+      const savedUser = localStorage.getItem('learnos_demo_user');
+      if (!savedUser) return null;
+      try {
+        return JSON.parse(savedUser) as User;
+      } catch {
+        return null;
+      }
+    }
     const res = await apiFetch(`${API_BASE}/auth/me`);
     if (!res.ok) return null;
     const data = await res.json();

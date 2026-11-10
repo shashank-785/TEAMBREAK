@@ -101,7 +101,7 @@ The setup process verifies the file size and SHA-256 checksum and stores the wei
 
 **Hardware:** 8 GB system RAM minimum; 16 GB recommended. Allow at least 2 GB of disk space for the weights and additional free memory for the OS, model context, and application. CPU inference is supported; throughput depends on the CPU. The server serializes generation to bound memory use. For a self-hosted web deployment, install the model on the backend host; browser-only hosting such as GitHub Pages cannot run the API or model.
 
-For development, copy `server/.env.example` to `server/.env` and set `AUTH_SECRET` to a generated random value of at least 32 bytes (for example, `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`). The server refuses to start with a missing or example secret. The optional GitHub Pages frontend at `docs/` still requires a separately deployed Express backend for server-backed features; it does not include model weights.
+For development, copy `server/.env.example` to `server/.env` and set `AUTH_SECRET` to a generated random value of at least 32 bytes (for example, `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`). The server refuses to start with a missing or example secret. The GitHub Pages frontend uses hash-based routes so refreshes work on static hosting. **Proceed as Demo Account** opens a browser-local demo profile; saved API data and AI still require the Express backend. The backend must include `https://shashank-785.github.io` in `CORS_ORIGINS`, and its host must have the verified model file and enough RAM for inference.
 
 ### Building for Production
 ```bash

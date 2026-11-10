@@ -46,8 +46,13 @@ export const AISetupNotice: React.FC = () => {
             )}
           </div>
           <p className="mt-1 text-xs leading-5 text-slate-600">
-            {loading ? 'Checking the LearnOS server…' : error ? 'AI setup status could not be reached. You do not need to install an AI app on your device.' : status?.message}
+            {loading ? 'Checking the LearnOS server…' : error || status?.message}
           </p>
+          {!loading && error && (
+            <p className="mt-2 text-[11px] leading-5 text-slate-500">
+              AI setup happens on the LearnOS backend. You do not need to install an AI app on your device.
+            </p>
+          )}
           {!loading && status?.setupRequired && (
             <p className="mt-2 text-[11px] leading-5 text-slate-500">
               One-time server setup: <code className="rounded bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-700">npm run setup:model</code>

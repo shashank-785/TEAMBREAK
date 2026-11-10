@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, BookOpen, Check, GraduationCap, LogIn, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpen, Check, GraduationCap, LogIn, PlayCircle, Sparkles } from 'lucide-react';
 import { api } from '../services/api';
 import { User } from '../types';
 import { AISetupNotice } from './AISetupNotice';
@@ -7,6 +7,7 @@ import { AISetupNotice } from './AISetupNotice';
 interface Props {
   onLogin: (user: User) => void;
   onSignup: (user: User) => void;
+  onDemo: (user: User) => void;
 }
 
 const studyCards = [
@@ -16,7 +17,7 @@ const studyCards = [
   { title: 'Study plans', detail: 'One day at a time', icon: GraduationCap, style: 'bg-[#b8e4d7] rotate-[-2deg]' }
 ];
 
-export const Login: React.FC<Props> = ({ onLogin, onSignup }) => {
+export const Login: React.FC<Props> = ({ onLogin, onSignup, onDemo }) => {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,6 +41,19 @@ export const Login: React.FC<Props> = ({ onLogin, onSignup }) => {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const enterDemo = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await api.loginAsDemo();
+      onDemo(result.user);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to open the demo workspace.');
     } finally {
       setLoading(false);
     }
@@ -142,6 +156,16 @@ export const Login: React.FC<Props> = ({ onLogin, onSignup }) => {
               {!loading && <ArrowRight size={16} />}
             </button>
           </form>
+
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void enterDemo()}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-bold text-violet-800 transition hover:bg-violet-100 disabled:opacity-60"
+          >
+            <PlayCircle size={17} />
+            {loading ? 'Opening demo workspace…' : 'Proceed as Demo Account'}
+          </button>
 
           <div className="my-6 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
             <span className="h-px flex-1 bg-slate-100" />Your learning, in one place<span className="h-px flex-1 bg-slate-100" />
