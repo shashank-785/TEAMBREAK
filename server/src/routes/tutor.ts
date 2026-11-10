@@ -1,69 +1,185 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { db } from '../db/db.js';
-import { aiService } from '../services/aiService.js';
+import { AuthRequest } from '../middleware/auth.js';
+import { aiService, AIRateLimitError, ChatTurn } from '../services/aiService.js';
 
 const router = Router();
 
 // Get all subjects with units & topics
-router.get('/subjects', (req: Request, res: Response) => {
-  const subjects = db.getSubjects();
+router.get('/subjects', (req: AuthRequest, res: Response) => {
+  const subjects = db.getSubjects(req.auth?.userId);
   res.json({ success: true, subjects });
 });
 
 // Get single subject details
-router.get('/subjects/:id', (req: Request, res: Response) => {
-  const subject = db.getSubjectById(req.params.id);
+router.get('/subjects/:id', (req: AuthRequest, res: Response) => {
+  const subject = db.getSubjectById(req.params.id, req.auth?.userId);
   if (!subject) {
     return res.status(404).json({ success: false, error: 'Subject not found' });
   }
   res.json({ success: true, subject });
 });
 
-// Toggle topic completion
-router.post('/topics/:id/toggle-completion', (req: Request, res: Response) => {
-  const completed = db.toggleTopicCompletion(req.params.id);
-  res.json({ success: true, completed });
+// Toggle topic completion (by subjectId and topicId)
+router.post('/subjects/:subjectId/topics/:topicId/toggle', (req: AuthRequest, res: Response) => {
+  const { subjectId, topicId } = req.params;
+  const topic = db.toggleTopicCompletion(subjectId, topicId, req.auth?.userId);
+  if (!topic) {
+    return res.status(404).json({ success: false, error: 'Topic not found' });
+  }
+  res.json({ success: true, topic });
 });
 
-// AI Learning Support: Explain topic in various pedagogical styles
-router.post('/topics/:id/ai-explain', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { mode, userPrompt } = req.body; // mode: 'feynman' | 'code' | 'quiz' | 'analogy' | 'custom'
-
-  let topicTitle = 'this Computer Science topic';
-  for (const s of db.getSubjects()) {
+// Legacy toggle topic completion route (by topicId alone)
+function handleToggleByTopicId(req: AuthRequest, res: Response) {
+  const topicId = req.params.id;
+  const subjects = db.getSubjects(req.auth?.userId);
+  for (const s of subjects) {
     for (const u of s.units) {
-      for (const t of u.topics) {
-        if (t.id === id) {
-          topicTitle = `${t.title} in ${s.name}`;
-          break;
+      if (u.topics.some((t) => t.id === topicId)) {
+        const topic = db.toggleTopicCompletion(s.id, topicId, req.auth?.userId);
+        return res.json({ success: true, topic, completed: topic?.isCompleted });
+      }
+    }
+  }
+  return res.status(404).json({ success: false, error: 'Topic not found' });
+}
+
+router.post('/topics/:id/toggle-completion', handleToggleByTopicId);
+router.post('/topics/:id/toggle', handleToggleByTopicId);
+
+// Add custom university syllabus unit/topic
+router.post('/subjects/:subjectId/custom-topic', (req: AuthRequest, res: Response) => {
+  const { subjectId } = req.params;
+  const { unitNumber, unitTitle, title, estimatedMinutes, content, keyPoints, subtopics, learningObjectives } =
+    req.body || {};
+
+  if (typeof title !== 'string' || !title.trim() || typeof content !== 'string' || !content.trim()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Both topic title and syllabus content are required.'
+    });
+  }
+
+  const topic = db.addCustomTopic(
+    subjectId,
+    {
+      unitNumber: Number(unitNumber) || 1,
+      unitTitle: typeof unitTitle === 'string' ? unitTitle : undefined,
+      title,
+      estimatedMinutes: Number(estimatedMinutes) || 35,
+      content,
+      keyPoints: Array.isArray(keyPoints) ? keyPoints.map(String) : undefined,
+      subtopics: Array.isArray(subtopics) ? subtopics.map(String) : undefined,
+      learningObjectives: Array.isArray(learningObjectives) ? learningObjectives.map(String) : undefined
+    },
+    req.auth?.userId
+  );
+
+  if (!topic) {
+    return res.status(404).json({ success: false, error: 'Subject not found' });
+  }
+
+  return res.status(201).json({
+    success: true,
+    topic,
+    subjects: db.getSubjects(req.auth?.userId)
+  });
+});
+
+// Context-aware AI Tutor Explanation & Multi-turn Chat
+async function handleTutorExplain(req: AuthRequest, res: Response) {
+  const userId = req.auth?.userId || 'anonymous';
+  const user = db.getUser(req.auth?.userId);
+  const {
+    topicTitle: bodyTopicTitle,
+    subjectName: bodySubjectName,
+    mode = 'feynman',
+    customQuestion,
+    userPrompt,
+    history
+  } = req.body || {};
+
+  let resolvedTopicTitle = typeof bodyTopicTitle === 'string' ? bodyTopicTitle.trim() : '';
+  let resolvedSubjectName = typeof bodySubjectName === 'string' ? bodySubjectName.trim() : '';
+
+  if (req.params.id && !resolvedTopicTitle) {
+    for (const s of db.getSubjects(req.auth?.userId)) {
+      for (const u of s.units) {
+        for (const t of u.topics) {
+          if (t.id === req.params.id) {
+            resolvedTopicTitle = t.title;
+            resolvedSubjectName = s.name;
+            break;
+          }
         }
       }
     }
   }
 
-  let prompt = '';
-  if (mode === 'feynman') {
-    prompt = `Explain ${topicTitle} using the Feynman Technique and an everyday analogy that a first-year student can instantly grasp.`;
-  } else if (mode === 'code') {
-    prompt = `Provide a clean, production-ready code implementation of ${topicTitle} with comments explaining time and space complexity.`;
-  } else if (mode === 'quiz') {
-    prompt = `Generate a 3-question Socratic conceptual quiz on ${topicTitle} to test my deep understanding.`;
-  } else if (mode === 'analogy') {
-    prompt = `Give an intuitive real-world analogy to understand the core problem solved by ${topicTitle}.`;
-  } else {
-    prompt = userPrompt || `Explain the key concepts and exam points for ${topicTitle}.`;
-  }
-  if (mode !== 'custom' && typeof userPrompt === 'string' && userPrompt.trim()) {
-    prompt += `\n\nUniversity syllabus and student context:\n${userPrompt.slice(0, 10000)}`;
+  const questionText =
+    (typeof customQuestion === 'string' && customQuestion.trim()) ||
+    (typeof userPrompt === 'string' && userPrompt.trim()) ||
+    '';
+
+  const styleMap: Record<string, string> = {
+    feynman: `Explain "${resolvedTopicTitle || 'this topic'}" in ${resolvedSubjectName || 'Computer Science'} using the Feynman technique with a simple mental model, clear breakdown, and a concrete example.`,
+    socratic: `Teach "${resolvedTopicTitle || 'this topic'}" in ${resolvedSubjectName || 'Computer Science'} using the Socratic method: provide intuition and ask 2-3 guiding conceptual questions with hints.`,
+    code: `Provide a clean, well-commented code implementation and complexity analysis for "${resolvedTopicTitle || 'this topic'}" in ${resolvedSubjectName || 'Computer Science'}.`,
+    analogy: `Explain "${resolvedTopicTitle || 'this topic'}" in ${resolvedSubjectName || 'Computer Science'} using a vivid real-world engineering analogy followed by the formal definition.`,
+    quiz: `Create a 3-question conceptual check on "${resolvedTopicTitle || 'this topic'}" with brief explanations.`
+  };
+
+  let prompt = questionText
+    ? `${styleMap[mode] || ''}\n\nStudent Question: ${questionText}`.trim()
+    : styleMap[mode] || `Explain "${resolvedTopicTitle || 'this topic'}" clearly for a university CS student.`;
+
+  if (Array.isArray(history) && history.length > 0) {
+    const turns = (history as ChatTurn[])
+      .slice(-6)
+      .map((h) => `${h.role === 'user' ? 'Student' : 'Tutor'}: ${h.content}`)
+      .join('\n');
+    prompt = `Prior Tutor Conversation:\n${turns}\n\nCurrent Request:\n${prompt}`;
   }
 
   try {
-    const aiResponse = await aiService.generateResponse(prompt, `College Tutor: ${topicTitle}`);
-    res.json({ success: true, response: aiResponse, mode });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    aiService.enforceRateLimit(userId);
+    const explanation = await aiService.generateResponse(prompt, {
+      user,
+      subject: resolvedSubjectName || 'Computer Science',
+      topic: resolvedTopicTitle,
+      mode
+    });
+    return res.json({
+      success: true,
+      explanation,
+      response: explanation,
+      mode,
+      fallback: false
+    });
+  } catch (error) {
+    if (error instanceof AIRateLimitError) {
+      return res.status(429).json({ success: false, error: error.message });
+    }
+    const fallbackExplanation = aiService.buildAcademicFallbackResponse(questionText || resolvedTopicTitle || prompt, {
+      user,
+      subject: resolvedSubjectName || 'Computer Science',
+      topic: resolvedTopicTitle,
+      mode
+    });
+    return res.json({
+      success: true,
+      explanation: fallbackExplanation,
+      response: fallbackExplanation,
+      mode,
+      fallback: true,
+      aiNotice:
+        'Generated using LearnOS Built-in Curriculum Engine (Live AI provider is currently offline or unconfigured).'
+    });
   }
-});
+}
+
+router.post('/explain', handleTutorExplain);
+router.post('/topics/:id/ai-explain', handleTutorExplain);
 
 export default router;

@@ -1,73 +1,78 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db/db.js';
+import { requireAuth, AuthRequest } from '../middleware/auth.js';
 import { aiService } from '../services/aiService.js';
-import { getSupabaseConfig } from '../db/supabaseClient.js';
+import { codeExecutionService } from '../services/codeExecutionService.js';
 
 const router = Router();
-const serverStartTime = Date.now();
 
-router.get('/ai-status', async (_req: Request, res: Response) => {
-  const status = await aiService.getStatus();
-  const message = status.isReady
-    ? 'LearnOS local AI is ready. You do not need to install anything on your device.'
-    : status.state === 'not_installed'
-      ? 'LearnOS AI is not set up on this server yet. This is a one-time setup for the server team; students do not need to download an AI app or model.'
-      : status.state === 'loading'
-        ? 'LearnOS AI is warming up on the server. You can create your account while it finishes.'
-        : status.minimumRamAvailable
-          ? 'LearnOS AI is temporarily unavailable on this server. The server team may need to check its local model setup.'
-          : 'This server does not currently meet LearnOS AI hardware requirements. Please contact the LearnOS administrator.';
-
+// Public, non-sensitive operational health check (used by Navbar status badge and Render health probes)
+router.get('/health', async (_req: Request, res: Response) => {
+  const ai = await aiService.getStatus();
   res.json({
     success: true,
-    isReady: status.isReady,
-    state: status.state,
-    model: status.model,
-    setupRequired: status.state === 'not_installed',
-    message
+    status: 'operational',
+    service: 'LearnOS Core Engine',
+    timestamp: new Date().toISOString(),
+    ai: {
+      provider: ai.provider,
+      model: ai.model,
+      isReady: ai.isReady,
+      state: ai.state,
+      mode: ai.mode || (ai.isReady ? 'remote' : 'fallback'),
+      fallbackAvailable: true
+    }
   });
 });
 
-router.get('/health', async (req: Request, res: Response) => {
-  const supabase = getSupabaseConfig();
-  const aiStatus = await aiService.getStatus();
+// Protected internal diagnostics (requires authentication; never exposes secrets)
+router.get('/diagnostics', requireAuth, async (_req: AuthRequest, res: Response) => {
+  const mem = process.memoryUsage();
+  const ai = await aiService.getStatus();
+  const runtimes = await codeExecutionService.getAvailableRuntimes();
+  const sandboxConfigured = codeExecutionService.isRemoteSandboxConfigured();
 
   res.json({
-    status: 'healthy',
+    success: true,
+    status: 'operational',
+    service: 'LearnOS Core Engine',
+    uptimeSeconds: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
-    uptimeSeconds: Math.floor((Date.now() - serverStartTime) / 1000),
-    services: {
-      api: { status: 'online', port: 5000 },
-      database: {
-        status: 'online',
-        type: 'Persistent Transactional Storage',
-        itemCounts: {
-          subjects: db.getSubjects().length,
-          tasks: db.getTasks().length,
-          notes: db.getNotes().length,
-          codingProblems: db.getCodingProblems().length
-        }
-      },
-      supabase: {
-        status: supabase.isConfigured ? 'connected' : 'ready (local mode active)',
-        config: supabase
-      },
-      aiEngine: {
-        status: aiStatus.isReady ? 'connected' : 'unavailable',
-        provider: aiStatus.provider,
-        runtime: aiStatus.runtime,
-        model: aiStatus.model,
-        modelInstalled: aiStatus.modelInstalled,
-        state: aiStatus.state,
-        isReady: aiStatus.isReady,
-        error: aiStatus.error
-      },
-      codeSandbox: {
-        status: process.env.PISTON_API_URL ? 'configured' : 'not-configured',
-        supportedLanguages: ['javascript', 'python', 'c', 'cpp'],
-        engines: ['External Piston Sandbox or configured PISTON_API_URL']
-      }
+    nodeVersion: process.version,
+    memory: {
+      rssMb: Math.round(mem.rss / 1024 / 1024),
+      heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotalMb: Math.round(mem.heapTotal / 1024 / 1024)
+    },
+    storage: {
+      driver: db.getStorageInfo().driver,
+      updatedAt: db.getStorageInfo().updatedAt
+    },
+    ai,
+    codeExecution: {
+      engine: sandboxConfigured ? 'Piston Remote Container Sandbox' : 'Browser Worker / Safe Fallback Mode',
+      sandboxConfigured,
+      runtimesCount: runtimes.length,
+      availableRuntimes: runtimes
     }
+  });
+});
+
+// Public AI readiness endpoint
+router.get('/ai-status', async (_req: Request, res: Response) => {
+  const ai = await aiService.getStatus();
+  res.json({
+    success: true,
+    isReady: ai.isReady,
+    state: ai.state,
+    model: ai.model,
+    provider: ai.provider,
+    mode: ai.mode || (ai.isReady ? 'remote' : 'fallback'),
+    setupRequired: false,
+    message: ai.isReady
+      ? `AI Assistant ready (${ai.provider} • ${ai.model})`
+      : 'LearnOS Built-in Curriculum AI Fallback is active. Remote cloud inference can be enabled via backend environment variables.',
+    ai
   });
 });
 

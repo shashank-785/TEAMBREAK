@@ -76,10 +76,16 @@ export const Layout: React.FC = () => {
     setOnboardingCompleteBackend(true);
   };
 
+  const handleSkipOnboarding = async () => {
+    localStorage.setItem('learnos_onboarding_complete', 'true');
+    const saved = await api.skipOnboarding();
+    setUser(saved);
+    setOnboardingComplete(true);
+    setOnboardingCompleteBackend(true);
+  };
+
   const handleLogout = () => {
-    localStorage.removeItem('learnos_token');
-    localStorage.removeItem('learnos_demo_session');
-    localStorage.removeItem('learnos_demo_user');
+    void api.logout();
     setUser(null);
     setOnboardingComplete(false);
   };
@@ -87,16 +93,16 @@ export const Layout: React.FC = () => {
   if (!authChecked) return <div className="min-h-screen bg-[var(--app-bg)]" />;
   if (!user) return <Login onLogin={currentUser => {
     setUser(currentUser);
-    api.getAuthStatus().then(status => {
-      setRegistered(status.registered);
-      setOnboardingCompleteBackend(status.onboardingComplete);
-      setOnboardingComplete(status.onboardingComplete);
-    });
+    const done = Boolean(currentUser.onboardingComplete || localStorage.getItem('learnos_onboarding_complete') === 'true');
+    setRegistered(true);
+    setOnboardingCompleteBackend(done);
+    setOnboardingComplete(done);
   }} onSignup={currentUser => {
     setRegistered(true);
     setUser(currentUser);
-    setOnboardingComplete(false);
-    setOnboardingCompleteBackend(false);
+    const done = Boolean(currentUser.onboardingComplete);
+    setOnboardingComplete(done);
+    setOnboardingCompleteBackend(done);
   }} onDemo={demoUser => {
     setUser(demoUser);
     setRegistered(true);
@@ -104,8 +110,9 @@ export const Layout: React.FC = () => {
     setOnboardingCompleteBackend(true);
   }} />;
 
-  if (registered && !onboardingCompleteBackend && !onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} />;
-  if (!onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} />;
+  if (!onboardingComplete && !onboardingCompleteBackend && !user.onboardingComplete) {
+    return <Onboarding user={user} onComplete={handleOnboardingComplete} onSkip={handleSkipOnboarding} />;
+  }
 
   return (
     <div className="flex min-h-screen overflow-x-hidden bg-[var(--app-bg)] text-[var(--text-primary)]">

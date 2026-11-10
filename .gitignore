@@ -9,3 +9,5 @@ build/
 *.gguf.partial
 coverage/
 .DS_Store
+server/data/learnos.runtime.json
+*.tmp

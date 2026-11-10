@@ -1,12 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, Plus, Trash2, Sparkles, Search, Download, 
-  Upload, Tag, Edit3, Eye, Loader2, CheckCircle, FolderPlus, FolderOpen
+  Upload, Edit3, Eye, Loader2, CheckCircle, FolderPlus, FolderOpen
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { Note } from '../../types';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
+
+const NOTE_SUBJECTS = [
+  'Operating Systems',
+  'Data Structures & Algorithms',
+  'Database Management Systems',
+  'Computer Networks',
+  'Discrete Mathematics',
+  'Artificial Intelligence & Machine Learning',
+  'Imported Documents',
+  'General'
+];
 
 export const Notes: React.FC = () => {
   const defaultFolders = ['General', 'Exam Prep', 'Interview Prep'];
@@ -21,6 +32,7 @@ export const Notes: React.FC = () => {
     return [...new Set([...defaultFolders, ...customFolders])];
   });
   const [isEditorMode, setIsEditorMode] = useState<boolean>(false);
+  const [editTagsText, setEditTagsText] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [aiError, setAiError] = useState('');
   const [generatedQuestions, setGeneratedQuestions] = useState('');
@@ -36,7 +48,7 @@ export const Notes: React.FC = () => {
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
-  // Document Upload Simulator
+  // Document Upload Modal
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [uploadContent, setUploadContent] = useState('');
@@ -45,7 +57,10 @@ export const Notes: React.FC = () => {
   useEffect(() => {
     api.getNotes().then((fetched) => {
       setNotes(fetched);
-      if (fetched.length > 0) setSelectedNote(fetched[0]);
+      if (fetched.length > 0) {
+        setSelectedNote(fetched[0]);
+        setEditTagsText(fetched[0].tags.join(', '));
+      }
     });
   }, []);
 
@@ -59,15 +74,18 @@ export const Notes: React.FC = () => {
 
   const handleSaveNote = async () => {
     if (!selectedNote) return;
+    const parsedTags = editTagsText.split(',').map(t => t.trim()).filter(Boolean);
     const updated = await api.updateNote(selectedNote.id, {
       title: selectedNote.title,
+      subject: selectedNote.subject,
       content: selectedNote.content,
-      tags: selectedNote.tags,
+      tags: parsedTags.length > 0 ? parsedTags : selectedNote.tags,
       folder: selectedNote.folder || 'General'
     });
     if (updated) {
       setNotes(prev => prev.map(n => n.id === updated.id ? updated : n));
       setSelectedNote(updated);
+      setEditTagsText(updated.tags.join(', '));
       setIsEditorMode(false);
     }
   };
@@ -115,15 +133,16 @@ export const Notes: React.FC = () => {
 
     const tagsArr = newTags.split(',').map(t => t.trim()).filter(Boolean);
     const created = await api.createNote({
-      title: newTitle,
+      title: newTitle.trim(),
       subject: newSubject,
       folder: newFolder,
-      content: newContent || '# ' + newTitle + '\n\nStart typing notes here...',
+      content: newContent || '# ' + newTitle.trim() + '\n\nStart typing notes here...',
       tags: tagsArr
     });
 
     setNotes(prev => [created, ...prev]);
     setSelectedNote(created);
+    setEditTagsText(created.tags.join(', '));
     setIsNewModalOpen(false);
     setNewTitle('');
     setNewContent('');
@@ -153,7 +172,7 @@ export const Notes: React.FC = () => {
       return;
     }
     if (!/\.(txt|md|json)$/i.test(file.name)) {
-      setUploadError('Only text, Markdown, and JSON files are supported. PDF extraction is not available yet.');
+      setUploadError('Only text, Markdown, and JSON files are supported. For PDFs, paste the text directly below.');
       return;
     }
 
@@ -173,16 +192,19 @@ export const Notes: React.FC = () => {
   };
 
   const handleImportDocument = async () => {
-    if (!uploadedFileName || !uploadContent.trim()) return;
+    if (!uploadContent.trim()) return;
+    const title = uploadedFileName ? uploadedFileName.replace(/\.[^/.]+$/, '') : 'Imported Study Document';
     const created = await api.createNote({
-      title: uploadedFileName.replace(/\.[^/.]+$/, ''),
+      title,
       subject: 'Imported Documents',
+      folder: 'General',
       content: uploadContent,
       tags: ['Imported', 'Document']
     });
 
     setNotes(prev => [created, ...prev]);
     setSelectedNote(created);
+    setEditTagsText(created.tags.join(', '));
     setIsUploadModalOpen(false);
     setUploadedFileName('');
     setUploadContent('');
@@ -210,7 +232,7 @@ export const Notes: React.FC = () => {
             <h1 className="text-2xl font-extrabold text-[#F8FAFC]">Notes & Documents</h1>
           </div>
           <p className="text-xs text-[#94A3B8] mt-1">
-            Markdown document manager, document ingestion, and AI study summarization.
+            Markdown document manager, document ingestion, AI study summarization, and MCQ generation.
           </p>
         </div>
 
@@ -270,7 +292,7 @@ export const Notes: React.FC = () => {
             </div>
 
             <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
-              {['All', 'Operating Systems', 'Data Structures & Algorithms', 'Database Systems'].map(sub => (
+              {['All', ...NOTE_SUBJECTS].map(sub => (
                 <button
                   key={sub}
                   onClick={() => setSelectedSubject(sub)}
@@ -280,7 +302,7 @@ export const Notes: React.FC = () => {
                       : 'bg-[#0B0D12] text-[#94A3B8] hover:text-[#F8FAFC]'
                   }`}
                 >
-                  {sub.split(' ')[0]}
+                  {sub === 'All' ? 'All Subjects' : sub.split(' ').slice(0, 2).join(' ')}
                 </button>
               ))}
             </div>
@@ -293,7 +315,11 @@ export const Notes: React.FC = () => {
               return (
                 <div
                   key={n.id}
-                  onClick={() => setSelectedNote(n)}
+                  onClick={() => {
+                    setSelectedNote(n);
+                    setEditTagsText(n.tags.join(', '));
+                    setIsEditorMode(false);
+                  }}
                   className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all space-y-2 ${
                     isSelected
                       ? 'bg-indigo-600/15 border-indigo-500/40 text-[#F8FAFC]'
@@ -307,7 +333,7 @@ export const Notes: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="text-[10px] font-medium text-indigo-300">{n.folder || 'General'}</div>
+                  <div className="text-[10px] font-medium text-indigo-300">{n.folder || 'General'} • {n.subject}</div>
                   <p className="text-[11px] text-[#94A3B8] line-clamp-2">
                     {n.summary || n.content.replace(/#|\*|`/g, '').slice(0, 100)}
                   </p>
@@ -339,7 +365,10 @@ export const Notes: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setIsEditorMode(!isEditorMode)}
+                    onClick={() => {
+                      setEditTagsText(selectedNote.tags.join(', '));
+                      setIsEditorMode(!isEditorMode);
+                    }}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0B0D12] hover:bg-[#1C2230] text-[#F8FAFC] border border-[#232936] rounded-lg text-xs font-semibold"
                   >
                     {isEditorMode ? <Eye size={13} /> : <Edit3 size={13} />}
@@ -386,7 +415,7 @@ export const Notes: React.FC = () => {
                     disabled={isAiLoading}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1C2230] hover:bg-[#232936] disabled:opacity-50 text-[#F8FAFC] border border-[#232936] rounded-lg text-xs font-semibold"
                   >
-                    <span>Generate 5 MCQs</span>
+                    <span>Generate 5 MCQs & Flashcards</span>
                   </button>
                 </div>
               </div>
@@ -409,16 +438,50 @@ export const Notes: React.FC = () => {
               {/* Editor or Markdown View */}
               {isEditorMode ? (
                 <div className="space-y-4">
-                  <label className="block text-xs font-medium text-[#94A3B8]">
-                    Save in folder
-                    <select
-                      value={selectedNote.folder || 'General'}
-                      onChange={event => setSelectedNote({ ...selectedNote, folder: event.target.value })}
-                      className="mt-1 w-full rounded-lg border border-[#232936] bg-[#0B0D12] px-3 py-2 text-xs text-[#F8FAFC]"
-                    >
-                      {folders.map(folder => <option key={folder} value={folder}>{folder}</option>)}
-                    </select>
-                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="block text-xs font-medium text-[#94A3B8]">
+                      Note Title
+                      <input
+                        type="text"
+                        value={selectedNote.title}
+                        onChange={e => setSelectedNote({ ...selectedNote, title: e.target.value })}
+                        className="mt-1 w-full rounded-lg border border-[#232936] bg-[#0B0D12] px-3 py-2 text-xs text-[#F8FAFC]"
+                      />
+                    </label>
+                    <label className="block text-xs font-medium text-[#94A3B8]">
+                      Subject
+                      <select
+                        value={selectedNote.subject}
+                        onChange={e => setSelectedNote({ ...selectedNote, subject: e.target.value })}
+                        className="mt-1 w-full rounded-lg border border-[#232936] bg-[#0B0D12] px-3 py-2 text-xs text-[#F8FAFC]"
+                      >
+                        {NOTE_SUBJECTS.map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="block text-xs font-medium text-[#94A3B8]">
+                      Save in folder
+                      <select
+                        value={selectedNote.folder || 'General'}
+                        onChange={event => setSelectedNote({ ...selectedNote, folder: event.target.value })}
+                        className="mt-1 w-full rounded-lg border border-[#232936] bg-[#0B0D12] px-3 py-2 text-xs text-[#F8FAFC]"
+                      >
+                        {folders.map(folder => <option key={folder} value={folder}>{folder}</option>)}
+                      </select>
+                    </label>
+                    <label className="block text-xs font-medium text-[#94A3B8]">
+                      Tags (comma separated)
+                      <input
+                        type="text"
+                        value={editTagsText}
+                        onChange={e => setEditTagsText(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-[#232936] bg-[#0B0D12] px-3 py-2 text-xs text-[#F8FAFC]"
+                      />
+                    </label>
+                  </div>
+
                   <textarea
                     rows={16}
                     value={selectedNote.content}
@@ -479,12 +542,9 @@ export const Notes: React.FC = () => {
                 onChange={(e) => setNewSubject(e.target.value)}
                 className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
               >
-                <option value="Operating Systems">Operating Systems</option>
-                <option value="Data Structures & Algorithms">Data Structures</option>
-                <option value="Database Management Systems">Database Systems</option>
-                <option value="Computer Networks">Computer Networks</option>
-                <option value="AI & Machine Learning">AI & ML</option>
-                <option value="General">General</option>
+                {NOTE_SUBJECTS.map(sub => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
               </select>
             </div>
 
@@ -498,17 +558,17 @@ export const Notes: React.FC = () => {
                 {folders.map(folder => <option key={folder} value={folder}>{folder}</option>)}
               </select>
             </div>
+          </div>
 
-            <div>
-              <label className="text-xs font-medium text-[#94A3B8]">Tags (comma separated)</label>
-              <input
-                type="text"
-                value={newTags}
-                onChange={(e) => setNewTags(e.target.value)}
-                placeholder="Paging, LRU, Memory"
-                className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
-              />
-            </div>
+          <div>
+            <label className="text-xs font-medium text-[#94A3B8]">Tags (comma separated)</label>
+            <input
+              type="text"
+              value={newTags}
+              onChange={(e) => setNewTags(e.target.value)}
+              placeholder="Paging, LRU, Memory"
+              className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
+            />
           </div>
 
           <div>
@@ -565,14 +625,14 @@ export const Notes: React.FC = () => {
         </form>
       </Modal>
 
-      {/* Modal: Document Upload Simulator */}
+      {/* Modal: Document Upload */}
       <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title="Upload Document / Syllabus File">
         <div className="space-y-4">
           <p className="text-xs text-[#94A3B8]">
-            Import a text, Markdown, or JSON file. Extracted text is saved as a note and can then be used by the AI Tutor. PDF extraction is not supported yet.
+            Import a text, Markdown, or JSON file, or paste syllabus/lecture text directly below. Extracted text is saved as a note and can be summarized or quizzed by the AI Tutor.
           </p>
 
-          <div className="p-6 border-2 border-dashed border-[#232936] hover:border-indigo-500/50 rounded-xl text-center space-y-2 cursor-pointer transition-colors bg-[#0B0D12]">
+          <div className="relative p-6 border-2 border-dashed border-[#232936] hover:border-indigo-500/50 rounded-xl text-center space-y-2 cursor-pointer transition-colors bg-[#0B0D12]">
             <Upload size={24} className="mx-auto text-indigo-400" />
             <div className="text-xs font-semibold text-[#F8FAFC]">Click to select file (.txt, .md, .json)</div>
             <div className="text-[11px] text-[#94A3B8]">Text extraction, up to 2 MB</div>
@@ -594,12 +654,12 @@ export const Notes: React.FC = () => {
           )}
 
           <div>
-            <label className="text-xs font-medium text-[#94A3B8]">Document Preview / Extracted Text</label>
+            <label className="text-xs font-medium text-[#94A3B8]">Document Preview / Pasted Text</label>
             <textarea
               rows={5}
               value={uploadContent}
               onChange={(e) => setUploadContent(e.target.value)}
-              placeholder="Extracted file text will appear here..."
+              placeholder="Extracted file text or pasted document content will appear here..."
               className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 font-mono text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -614,7 +674,7 @@ export const Notes: React.FC = () => {
             </button>
             <button
               type="button"
-              disabled={!uploadedFileName || !uploadContent.trim()}
+              disabled={!uploadContent.trim()}
               onClick={handleImportDocument}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30"
             >
@@ -624,9 +684,20 @@ export const Notes: React.FC = () => {
         </div>
       </Modal>
 
-      <Modal isOpen={isQuestionsModalOpen} onClose={() => setIsQuestionsModalOpen(false)} title="AI practice questions" maxWidth="3xl">
-        <div className="max-h-[70vh] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-[#F8FAFC]">
-          {generatedQuestions}
+      <Modal isOpen={isQuestionsModalOpen} onClose={() => setIsQuestionsModalOpen(false)} title="AI Practice Questions & Flashcards" maxWidth="3xl">
+        <div className="space-y-4">
+          <div className="max-h-[65vh] overflow-y-auto whitespace-pre-wrap text-xs sm:text-sm leading-relaxed text-[#F8FAFC] p-4 rounded-xl bg-[#0B0D12] border border-[#232936]">
+            {generatedQuestions}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsQuestionsModalOpen(false)}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold"
+            >
+              Done
+            </button>
+          </div>
         </div>
       </Modal>
     </div>

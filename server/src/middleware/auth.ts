@@ -5,10 +5,19 @@ export interface AuthRequest extends Request {
   auth?: { email: string; userId: string };
 }
 
+const revokedTokens = new Set<string>();
+
+export function revokeSessionToken(token: string): void {
+  if (token) {
+    revokedTokens.add(token);
+  }
+}
+
 export function isPublicApiRequest(method: string, path: string): boolean {
   if (method === 'OPTIONS') return true;
   if (method === 'GET' && path === '/auth/status') return true;
   if (method === 'GET' && path === '/system/ai-status') return true;
+  if (method === 'GET' && path === '/system/health') return true;
   return method === 'POST' && (path === '/auth/login' || path === '/auth/register');
 }
 
@@ -29,7 +38,7 @@ export function createSessionToken(userId: string, email: string): string {
   const payload = Buffer.from(JSON.stringify({
     userId,
     email,
-    expiresAt: Date.now() + 24 * 60 * 60 * 1000
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
   })).toString('base64url');
   const signature = createHmac('sha256', getSecret()).update(payload).digest('base64url');
   return `${payload}.${signature}`;
@@ -41,7 +50,12 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     return res.status(401).json({ success: false, error: 'Authentication required' });
   }
 
-  const [payload, signature] = authorization.slice(7).split('.');
+  const rawToken = authorization.slice(7).trim();
+  if (revokedTokens.has(rawToken)) {
+    return res.status(401).json({ success: false, error: 'Session has been logged out' });
+  }
+
+  const [payload, signature] = rawToken.split('.');
   if (!payload || !signature) {
     return res.status(401).json({ success: false, error: 'Invalid authentication token' });
   }

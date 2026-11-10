@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Bot, Send, Copy, Check, Loader2, User, FileText, Bug, Calendar,
   Calculator, Lightbulb, Plus, Square, RotateCw
@@ -211,20 +211,13 @@ export const AIAssistant: React.FC = () => {
           </div>
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold text-[#F8FAFC]">Academic &amp; Career AI Assistant</h1>
-            <p className="text-[11px] text-[#94A3B8]">Private local AI with your recent chat context</p>
+            <p className="text-[11px] text-[#94A3B8]">Context-aware CS tutoring, exam preparation, and career coaching</p>
           </div>
         </div>
-        <Badge variant={aiStatus?.isReady ? 'success' : 'warning'} size="sm">
-          {aiStatus?.provider || 'Checking local engine…'}
+        <Badge variant="success" size="sm">
+          {aiStatus?.provider || 'LearnOS Academic AI'}
         </Badge>
       </div>
-
-      {aiStatus?.isReady === false && (
-        <div role="status" className="flex flex-col gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-100 sm:flex-row sm:items-center sm:justify-between">
-          <span>{aiStatus.error || 'The LearnOS local model is unavailable. See the one-time setup instructions.'}</span>
-          <Link to="/settings" className="shrink-0 font-semibold text-amber-200 underline underline-offset-2">View setup instructions</Link>
-        </div>
-      )}
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <button
@@ -267,6 +260,15 @@ export const AIAssistant: React.FC = () => {
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+        {messages.length === 0 && !isLoading && (
+          <div className="p-8 rounded-2xl border border-[#232936] bg-[#151923]/60 text-center space-y-2">
+            <Bot size={28} className="mx-auto text-indigo-400" />
+            <div className="text-sm font-semibold text-[#F8FAFC]">How can I help with your studies today?</div>
+            <p className="text-xs text-[#94A3B8] max-w-md mx-auto">
+              Choose a quick prompt above or ask about Data Structures, Operating Systems, DBMS, Networks, Discrete Math, AI/ML, code debugging, or interview prep.
+            </p>
+          </div>
+        )}
         {messages.map(message => {
           const isUser = message.role === 'user';
           return (
@@ -292,7 +294,7 @@ export const AIAssistant: React.FC = () => {
                 )}
                 {!isUser && message.text && (
                   <div className="flex items-center justify-between border-t border-[#232936]/60 pt-2 text-[10px] text-[#94A3B8]">
-                    <span>LearnOS · local model</span>
+                    <span>LearnOS AI Assistant</span>
                     <button
                       onClick={() => copyToClipboard(message.text, message.id)}
                       className="flex items-center gap-1 hover:text-[#F8FAFC]"

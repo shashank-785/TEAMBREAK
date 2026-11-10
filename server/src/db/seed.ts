@@ -9,10 +9,23 @@ export const initialUser: User = {
   name: 'Alex Rivera',
   email: 'alex.rivera@university.edu',
   university: 'Imperial Institute of Technology',
+  degree: 'B.Tech',
+  branch: 'Computer Science & Engineering',
   major: 'Computer Science & Engineering',
   semester: 5,
+  subjects: [
+    'Data Structures & Algorithms',
+    'Operating Systems',
+    'Database Management Systems',
+    'Computer Networks',
+    'Discrete Mathematics',
+    'Artificial Intelligence & Machine Learning'
+  ],
+  learningInterests: ['Algorithms', 'Distributed Systems', 'Applied AI'],
+  careerInterests: ['Full-Stack AI Engineer', 'Backend Systems Architect'],
+  onboardingComplete: true,
   targetGpa: 9.0,
-  currentGpa: 0,
+  currentGpa: 8.6,
   streakDays: 14,
   totalStudyHours: 142.5,
   quizzesCompleted: 28,
@@ -43,6 +56,18 @@ export const initialSubjects: Subject[] = [
             title: 'Asymptotic Notations & Master Theorem',
             estimatedMinutes: 35,
             content: 'Asymptotic analysis describes the limiting behavior of execution time or memory when input size $n$ approaches infinity.\n\n### Big-O ($O$), Big-$\Omega$, Big-$\Theta$\n- **$O(g(n))$**: Upper bound. $f(n) \\le c \\cdot g(n)$ for all $n \\ge n_0$.\n- **$\\Omega(g(n))$**: Lower bound. $f(n) \\ge c \\cdot g(n)$ for all $n \\ge n_0$.\n- **$\\Theta(g(n))$**: Tight bound. $c_1 g(n) \\le f(n) \\le c_2 g(n)$.\n\n### Master Theorem\nFor recurrences of the form $T(n) = a T(n/b) + f(n)$ where $a \\ge 1, b > 1$:\n- If $f(n) = O(n^{\\log_b a - \\epsilon})$, then $T(n) = \\Theta(n^{\\log_b a})$.\n- If $f(n) = \\Theta(n^{\\log_b a} \\log^k n)$, then $T(n) = \\Theta(n^{\\log_b a} \\log^{k+1} n)$.\n- If $f(n) = \\Omega(n^{\\log_b a + \\epsilon})$ and regularity condition holds, $T(n) = \\Theta(f(n))$.',
+            subtopics: [
+              'Best, Average, and Worst-Case Time Complexity',
+              'Formal Definitions of Big-O, Big-Omega, and Big-Theta',
+              'Recurrence Relations & Recursion Tree Method',
+              'Master Theorem Three Cases & Regularity Condition',
+              'Amortized Complexity (Aggregate & Potential Method)'
+            ],
+            learningObjectives: [
+              'Formally prove upper, lower, and tight asymptotic bounds for iterative and recursive algorithms.',
+              'Apply the Master Theorem to solve divide-and-conquer recurrences such as Merge Sort, Binary Search, and Strassen’s Matrix Multiplication.',
+              'Distinguish between worst-case complexity and amortized complexity in dynamic arrays.'
+            ],
             keyPoints: [
               'Big-O represents the worst-case asymptotic upper bound.',
               'Master theorem solves divide-and-conquer recurrences in $O(1)$ lookup time.',
@@ -54,6 +79,30 @@ export const initialSubjects: Subject[] = [
                 code: '# Binary Search: O(log n) time, O(1) space\ndef binary_search(arr: list[int], target: int) -> int:\n    left, right = 0, len(arr) - 1\n    while left <= right:\n        mid = left + (right - left) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return -1'
               }
             ],
+            practiceQuestions: [
+              {
+                question: 'Solve the recurrence T(n) = 4T(n/2) + n^2 using the Master Theorem.',
+                hint: 'Compare n^(log_b a) = n^(log_2 4) = n^2 with f(n) = n^2.',
+                answer: 'Here a = 4, b = 2, so n^(log_2 4) = n^2. Since f(n) = Theta(n^2 log^0 n), Case 2 applies and T(n) = Theta(n^2 log n).'
+              },
+              {
+                question: 'Why does appending n elements to a dynamic array take O(n) total time despite occasional O(n) resizing?',
+                hint: 'Sum the geometric series of array doubling costs: 1 + 2 + 4 + ... + n.',
+                answer: 'Doubling happens only at powers of 2. The total copy cost over n insertions is bounded by 2n, yielding O(1) amortized time per insertion.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'Master Theorem Quick Sheet',
+                type: 'formula',
+                summary: 'Compare f(n) against n^(log_b a): smaller -> Case 1 Theta(n^log_b a); equal -> Case 2 multiply by log n; larger -> Case 3 Theta(f(n)).'
+              },
+              {
+                title: 'Common Complexity Hierarchy',
+                type: 'cheatsheet',
+                summary: 'O(1) < O(log n) < O(sqrt(n)) < O(n) < O(n log n) < O(n^2) < O(2^n) < O(n!)'
+              }
+            ],
             isCompleted: true
           },
           {
@@ -61,6 +110,17 @@ export const initialSubjects: Subject[] = [
             title: 'Singly & Doubly Linked Lists with Cycle Detection',
             estimatedMinutes: 40,
             content: 'Linked lists represent linear sequences of nodes containing data and reference pointers.\n\nFloyd\'s Cycle Finding Algorithm (Tortoise and Hare) uses two pointers moving at different speeds (1 step and 2 steps). If a cycle exists, they are guaranteed to meet inside the loop in $O(n)$ time and $O(1)$ auxiliary space.',
+            subtopics: [
+              'Singly, Doubly, and Circular Linked List Representations',
+              'In-Place Reversal of Linked Lists',
+              'Floyd’s Tortoise and Hare Cycle Detection & Cycle Entry Node Proof',
+              'LRU Cache Design using Doubly Linked List + Hash Map'
+            ],
+            learningObjectives: [
+              'Implement pointer manipulation for $O(1)$ head/tail insertion and deletion without memory leaks.',
+              'Mathematically prove why fast and slow pointers meet at the cycle entry point when reset to head.',
+              'Combine doubly linked lists and hash maps to build an $O(1)$ LRU cache.'
+            ],
             keyPoints: [
               'Insertions at head take $O(1)$ time.',
               'Floyd’s algorithm detects cycles without extra hash table storage.',
@@ -70,6 +130,20 @@ export const initialSubjects: Subject[] = [
               {
                 language: 'javascript',
                 code: 'function hasCycle(head) {\n  let slow = head, fast = head;\n  while (fast && fast.next) {\n    slow = slow.next;\n    fast = fast.next.next;\n    if (slow === fast) return true;\n  }\n  return false;\n}'
+              }
+            ],
+            practiceQuestions: [
+              {
+                question: 'How do you find the exact starting node of a cycle in a singly linked list in O(1) space?',
+                hint: 'Once slow and fast meet inside the cycle, place one pointer back at head.',
+                answer: 'After slow and fast collide, reset slow = head and advance both by 1 step at a time. The node where they meet is the cycle entrance.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'Linked List vs Dynamic Array Tradeoffs',
+                type: 'summary',
+                summary: 'Arrays give O(1) random access and cache locality; Linked Lists give O(1) splice/insert given a node reference.'
               }
             ],
             isCompleted: true
@@ -87,9 +161,88 @@ export const initialSubjects: Subject[] = [
             title: 'AVL Trees & Rotations',
             estimatedMinutes: 45,
             content: 'An AVL tree is a self-balancing binary search tree where the heights of the two child subtrees of any node differ by at most 1.\n\nBalance Factor: $BF = \\text{height}(left) - \\text{height}(right) \\in \\{-1, 0, 1\\}$.\n\nWhen an insertion unbalances a node, four rotation cases restore balance in $O(1)$ time: Left-Left (Single Right Rotation), Right-Right (Single Left Rotation), Left-Right (Double Rotation), and Right-Left (Double Rotation).',
+            subtopics: [
+              'BST Invariant & Degenerate Skewed Trees',
+              'Balance Factor Calculation & Height Maintenance',
+              'LL, RR, LR, and RL Tree Rotations',
+              'Comparison of AVL Trees vs Red-Black Trees'
+            ],
+            learningObjectives: [
+              'Identify which of the four AVL rotation types is required after inserting or deleting a key.',
+              'Prove why an AVL tree of $n$ nodes has height strictly bounded by $1.44 \\log_2(n+2)$.'
+            ],
             keyPoints: [
               'Guarantees $O(\\log n)$ search, insertion, and deletion.',
               'More rigidly balanced than Red-Black trees, making lookups faster.'
+            ],
+            codeExamples: [
+              {
+                language: 'python',
+                code: 'def right_rotate(y):\n    x = y.left\n    T2 = x.right\n    x.right = y\n    y.left = T2\n    y.height = 1 + max(height(y.left), height(y.right))\n    x.height = 1 + max(height(x.left), height(x.right))\n    return x'
+              }
+            ],
+            practiceQuestions: [
+              {
+                question: 'Insert keys 10, 20, 30 into an initially empty AVL tree. Which rotation is triggered?',
+                hint: 'Check the balance factor of node 10 after inserting 30.',
+                answer: 'Node 10 gets Balance Factor -2 (Right-Right imbalance), triggering a Single Left Rotation around 10, making 20 the new root.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'AVL Rotation Matrix',
+                type: 'cheatsheet',
+                summary: 'BF > 1 & key < left.key -> LL (Right Rotate); BF < -1 & key > right.key -> RR (Left Rotate); LR -> Left then Right; RL -> Right then Left.'
+              }
+            ],
+            isCompleted: false
+          }
+        ]
+      },
+      {
+        id: 'unit_dsa_3',
+        unitNumber: 3,
+        title: 'Graphs, Shortest Paths & Dynamic Programming',
+        description: 'BFS/DFS traversals, topological sort, Dijkstra, Bellman-Ford, and overlapping subproblems.',
+        topics: [
+          {
+            id: 'top_dsa_3_1',
+            title: 'Dijkstra’s Shortest Path & Dynamic Programming Foundations',
+            estimatedMinutes: 50,
+            content: 'Dijkstra’s algorithm computes single-source shortest paths on graphs with non-negative edge weights using a greedy min-priority queue strategy in $O((V + E) \\log V)$ time.\n\nDynamic Programming (DP) solves optimization problems exhibiting **Optimal Substructure** and **Overlapping Subproblems** via top-down memoization or bottom-up tabulation.',
+            subtopics: [
+              'Breadth-First Search (BFS) & Depth-First Search (DFS)',
+              'Edge Relaxation & Dijkstra’s Priority Queue Invariant',
+              'Bellman-Ford & Negative Weight Cycle Detection',
+              '0/1 Knapsack & Longest Common Subsequence (LCS)'
+            ],
+            learningObjectives: [
+              'Trace Dijkstra’s algorithm and explain why negative edge weights break its greedy invariant.',
+              'Formulate state transitions and base cases for 1D and 2D Dynamic Programming problems.'
+            ],
+            keyPoints: [
+              'Dijkstra requires non-negative weights; Bellman-Ford handles negative weights in $O(VE)$.',
+              'DP trades space for time by caching subproblem solutions.'
+            ],
+            codeExamples: [
+              {
+                language: 'python',
+                code: 'import heapq\ndef dijkstra(graph, start):\n    dist = {node: float("inf") for node in graph}\n    dist[start] = 0\n    pq = [(0, start)]\n    while pq:\n        d, u = heapq.heappop(pq)\n        if d > dist[u]: continue\n        for v, w in graph[u]:\n            if dist[u] + w < dist[v]:\n                dist[v] = dist[u] + w\n                heapq.heappush(pq, (dist[v], v))\n    return dist'
+              }
+            ],
+            practiceQuestions: [
+              {
+                question: 'What is the time complexity of 0/1 Knapsack with n items and capacity W?',
+                hint: 'Consider the dimensions of the DP table.',
+                answer: 'O(n * W) time and O(W) auxiliary space when optimized to a 1D rolling array (pseudo-polynomial time).'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'Shortest Path Algorithm Selector',
+                type: 'reference',
+                summary: 'Unweighted -> BFS O(V+E); Non-negative weights -> Dijkstra O((V+E)log V); Negative weights -> Bellman-Ford O(VE); All-pairs -> Floyd-Warshall O(V^3).'
+              }
             ],
             isCompleted: false
           }
@@ -117,9 +270,39 @@ export const initialSubjects: Subject[] = [
             title: 'Process Lifecycle & Context Switching',
             estimatedMinutes: 30,
             content: 'A process is an instance of an executing program consisting of text segment, data segment, heap, and call stack.\n\nState Diagram: New -> Ready -> Running -> Waiting (Blocked) -> Terminated.\n\nContext switching saves the CPU register state into the PCB of the current process and reloads the PCB of the next scheduled process. This incurs CPU overhead without executing user instructions.',
+            subtopics: [
+              'Process Memory Layout (Text, Data, BSS, Heap, Stack)',
+              '5-State and 7-State Process Transitions',
+              'Process Control Block (PCB) & Kernel Mode Transitions',
+              'User-Level vs Kernel-Level Threads'
+            ],
+            learningObjectives: [
+              'Differentiate between a process and a thread in terms of address space sharing and context switch cost.',
+              'Trace state transitions triggered by system calls, interrupts, and I/O completion events.'
+            ],
             keyPoints: [
               'PCB stores Program Counter, Registers, Memory Limits, Open File Descriptors.',
               'Context switch overhead is influenced by cache pollution and TLB flushes.'
+            ],
+            codeExamples: [
+              {
+                language: 'c',
+                code: '#include <stdio.h>\n#include <unistd.h>\nint main() {\n    pid_t pid = fork();\n    if (pid == 0) {\n        printf("Child process (PID: %d)\\n", getpid());\n    } else if (pid > 0) {\n        printf("Parent waiting for child %d\\n", pid);\n    }\n    return 0;\n}'
+              }
+            ],
+            practiceQuestions: [
+              {
+                question: 'How many total processes are created if a program calls fork() 3 times unconditionally in sequence?',
+                hint: 'Each fork() doubles the number of active processes.',
+                answer: '2^3 = 8 total processes (1 original parent + 7 newly created child processes).'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'Process vs Thread Summary',
+                type: 'summary',
+                summary: 'Processes have isolated virtual address spaces; threads within a process share code, data, and heap but maintain separate stacks and registers.'
+              }
             ],
             isCompleted: true
           },
@@ -128,9 +311,33 @@ export const initialSubjects: Subject[] = [
             title: 'CPU Scheduling Algorithms: Round Robin & SRTF',
             estimatedMinutes: 40,
             content: 'Schedulers optimize turnaround time, waiting time, and response time.\n\n- **Shortest Remaining Time First (SRTF)**: Preemptive version of SJF; mathematically minimizes average waiting time, but risks starvation of long jobs.\n- **Round Robin (RR)**: Time quantum $q$ slices CPU fairly among ready processes. If $q$ is too small, context switch overhead dominates; if too large, it degrades to FCFS.',
+            subtopics: [
+              'Turnaround Time, Waiting Time, and Response Time Formulas',
+              'Convoy Effect in First-Come First-Served (FCFS)',
+              'Shortest Job First (SJF) & Preemptive SRTF',
+              'Round Robin Quantum Selection & Multilevel Feedback Queues (MLFQ)'
+            ],
+            learningObjectives: [
+              'Construct Gantt charts and compute average Turnaround Time and Waiting Time for preemptive and non-preemptive workloads.',
+              'Explain how aging prevents indefinite starvation in priority scheduling.'
+            ],
             keyPoints: [
               'SRTF gives minimal average waiting time.',
               'Round Robin prevents starvation with bounded latency.'
+            ],
+            practiceQuestions: [
+              {
+                question: 'Give the formula relating Turnaround Time (TAT), Completion Time (CT), Arrival Time (AT), Waiting Time (WT), and Burst Time (BT).',
+                hint: 'Turnaround time is total time spent in the system from arrival to completion.',
+                answer: 'TAT = CT - AT, and WT = TAT - BT.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'CPU Scheduling Formulas',
+                type: 'formula',
+                summary: 'Turnaround Time = Completion Time - Arrival Time | Waiting Time = Turnaround Time - Burst Time | Response Time = First CPU Allocation - Arrival Time.'
+              }
             ],
             isCompleted: true
           }
@@ -147,9 +354,76 @@ export const initialSubjects: Subject[] = [
             title: 'Semaphores & Dining Philosophers Problem',
             estimatedMinutes: 45,
             content: 'A semaphore is an integer variable accessed via atomic `wait()` (P) and `signal()` (V) operations.\n\nDeadlock requires four simultaneous Coffman conditions:\n1. Mutual Exclusion\n2. Hold and Wait\n3. No Preemption\n4. Circular Wait\n\nDining Philosophers can be solved deadlock-free by resource hierarchy (odd/even ordering) or an asymmetric pickup strategy.',
+            subtopics: [
+              'Race Conditions & Critical Section Requirements (Mutual Exclusion, Progress, Bounded Waiting)',
+              'Peterson’s Solution & Hardware Atomic Instructions (Test-and-Set, CAS)',
+              'Producer-Consumer & Readers-Writers Problems',
+              'Coffman Deadlock Conditions & Banker’s Safety Algorithm'
+            ],
+            learningObjectives: [
+              'Write deadlock-free synchronization pseudocode using mutexes and counting semaphores.',
+              'Execute Banker’s Algorithm to verify whether a system resource state has a safe execution sequence.'
+            ],
             keyPoints: [
               'Counting vs Binary semaphores.',
               'Banker’s algorithm tests safe states before granting resource requests.'
+            ],
+            practiceQuestions: [
+              {
+                question: 'Which Coffman condition is broken when processes must request resources in strictly increasing numerical order?',
+                hint: 'Think about whether a cycle can form in the resource allocation graph.',
+                answer: 'Circular Wait is broken because a cycle cannot exist when resources are acquired in strictly ascending order.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'Coffman Conditions Checklist',
+                type: 'cheatsheet',
+                summary: '1. Mutual Exclusion | 2. Hold & Wait | 3. No Preemption | 4. Circular Wait. Negating ANY one prevents deadlock.'
+              }
+            ],
+            isCompleted: false
+          }
+        ]
+      },
+      {
+        id: 'unit_os_3',
+        unitNumber: 3,
+        title: 'Virtual Memory, Paging & Page Replacement',
+        description: 'Page tables, Translation Lookaside Buffer (TLB), Effective Access Time, and LRU/Optimal replacement.',
+        topics: [
+          {
+            id: 'top_os_3_1',
+            title: 'Demand Paging, TLB & Page Replacement (FIFO, Optimal, LRU)',
+            estimatedMinutes: 45,
+            content: 'Virtual memory decouples logical address space from physical RAM frames using page tables and a hardware Translation Lookaside Buffer (TLB).\n\n**Effective Access Time (EAT)**:\n$$\\text{EAT} = \\alpha (t_{\\text{TLB}} + t_{\\text{mem}}) + (1 - \\alpha)(t_{\\text{TLB}} + 2 t_{\\text{mem}})$$\nwhere $\\alpha$ is the TLB hit ratio.\n\n**Page Replacement**:\n- **FIFO**: Suffers from Belady’s Anomaly.\n- **Optimal (OPT)**: Replaces the page not needed for the longest future time.\n- **LRU**: Stack algorithm replacing the least recently accessed page; free of Belady’s Anomaly.',
+            subtopics: [
+              'Logical to Physical Address Translation (Page Number + Offset)',
+              'Hierarchical & Inverted Page Tables',
+              'Translation Lookaside Buffer (TLB) Hit Ratio & EAT Calculation',
+              'FIFO, Optimal, LRU, and Clock Page Replacement & Thrashing'
+            ],
+            learningObjectives: [
+              'Calculate Effective Access Time given TLB hit rate, memory access latency, and page fault service time.',
+              'Simulate FIFO, Optimal, and LRU page replacement on reference strings and identify Belady’s Anomaly.'
+            ],
+            keyPoints: [
+              'LRU and Optimal are stack algorithms and never suffer from Belady’s Anomaly.',
+              'Working-set model prevents thrashing by ensuring enough frames are allocated per active process.'
+            ],
+            practiceQuestions: [
+              {
+                question: 'If TLB lookup takes 10 ns, memory access takes 100 ns, and TLB hit ratio is 90%, what is the Effective Access Time (ignoring page faults)?',
+                hint: 'EAT = 0.90 * (10 + 100) + 0.10 * (10 + 200).',
+                answer: 'EAT = 0.90 * 110 + 0.10 * 210 = 99 + 21 = 120 ns.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'Virtual Memory Formula Card',
+                type: 'formula',
+                summary: 'Number of Pages = Logical Address Space / Page Size | Offset bits = log2(Page Size).'
+              }
             ],
             isCompleted: false
           }
@@ -177,9 +451,39 @@ export const initialSubjects: Subject[] = [
             title: 'Functional Dependencies & BCNF Normalization',
             estimatedMinutes: 40,
             content: 'Normalization eliminates insertion, update, and deletion anomalies while minimizing redundancy.\n\n- **1NF**: Atomic attribute values.\n- **2NF**: In 1NF and no non-prime attribute is partially dependent on any candidate key.\n- **3NF**: In 2NF and no transitive dependencies ($X \\to Y \\implies X$ is superkey or $Y$ is prime).\n- **Boyce-Codd Normal Form (BCNF)**: For every non-trivial functional dependency $X \\to Y$, $X$ MUST be a superkey.',
+            subtopics: [
+              'Armstrong’s Axioms & Attribute Closure ($X^+$)',
+              'Candidate Key Discovery from Functional Dependencies',
+              '1NF, 2NF, 3NF, and BCNF Definitions',
+              'Lossless-Join & Dependency-Preserving Decompositions'
+            ],
+            learningObjectives: [
+              'Compute attribute closures to find all candidate keys of a relation.',
+              'Determine the highest normal form satisfied by a schema and decompose it losslessly into 3NF/BCNF.'
+            ],
             keyPoints: [
               'BCNF eliminates all redundancy based on functional dependencies.',
               '3NF guarantees dependency preservation; BCNF may lose dependencies during decomposition.'
+            ],
+            codeExamples: [
+              {
+                language: 'sql',
+                code: '-- Normalized 3NF Schema for Course Enrollment\nCREATE TABLE Students (\n  student_id INT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  dept_id INT REFERENCES Departments(dept_id)\n);\nCREATE TABLE Enrollments (\n  student_id INT REFERENCES Students(student_id),\n  course_id INT REFERENCES Courses(course_id),\n  grade CHAR(2),\n  PRIMARY KEY (student_id, course_id)\n);'
+              }
+            ],
+            practiceQuestions: [
+              {
+                question: 'Given relation R(A, B, C) with FDs {AB -> C, C -> B}, what is the highest normal form of R?',
+                hint: 'Find the candidate keys first: (AB)+ = ABC and (AC)+ = ABC. Thus B is a prime attribute.',
+                answer: 'Candidate keys are AB and AC. In C -> B, C is not a superkey, violating BCNF, but B is a prime attribute, so R is in 3NF.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'Normal Forms Ladder',
+                type: 'cheatsheet',
+                summary: '1NF (Atomic) -> 2NF (No Partial FD on CK) -> 3NF (LHS is Superkey OR RHS is Prime) -> BCNF (LHS is always Superkey).'
+              }
             ],
             isCompleted: true
           }
@@ -196,9 +500,75 @@ export const initialSubjects: Subject[] = [
             title: 'ACID Properties & Two-Phase Locking (2PL)',
             estimatedMinutes: 35,
             content: 'Transactions must satisfy ACID: Atomicity, Consistency, Isolation, and Durability.\n\n**Two-Phase Locking (2PL)** ensures conflict serializability by dividing locking into:\n1. Growing Phase: Locks acquired, no locks released.\n2. Shrinking Phase: Locks released, no new locks acquired.\n\n**Strict 2PL** holds all exclusive locks until transaction commit/abort, preventing cascading rollbacks.',
+            subtopics: [
+              'ACID Guarantees & Transaction State Diagram',
+              'Conflict Serializability & Precedence Graph Cycle Test',
+              'Shared/Exclusive Locks & Basic vs Strict vs Rigorous 2PL',
+              'Write-Ahead Logging (WAL) & ARIES Recovery Overview'
+            ],
+            learningObjectives: [
+              'Construct a precedence (serialization) graph for a concurrent schedule and test for conflict serializability.',
+              'Explain how Strict 2PL prevents cascading aborts and dirty reads.'
+            ],
             keyPoints: [
               '2PL guarantees conflict serializability.',
               'Strict 2PL prevents dirty reads and cascading rollbacks.'
+            ],
+            practiceQuestions: [
+              {
+                question: 'How do you test whether a schedule S is conflict serializable?',
+                hint: 'Build a directed graph with transactions as nodes and RW/WR/WW conflicts as edges.',
+                answer: 'Construct the precedence graph of conflicting operations. Schedule S is conflict serializable if and only if its precedence graph is acyclic (a DAG).'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'Isolation Anomalies vs SQL Levels',
+                type: 'reference',
+                summary: 'Read Uncommitted (Dirty Read) -> Read Committed (Non-repeatable Read) -> Repeatable Read (Phantom Read) -> Serializable (No anomalies).'
+              }
+            ],
+            isCompleted: false
+          }
+        ]
+      },
+      {
+        id: 'unit_dbms_3',
+        unitNumber: 3,
+        title: 'Indexing, B+ Trees & Query Optimization',
+        description: 'Clustered vs unclustered indexes, B+ Tree node splitting, and join algorithms.',
+        topics: [
+          {
+            id: 'top_dbms_3_1',
+            title: 'B+ Tree Indexing & Join Algorithms',
+            estimatedMinutes: 40,
+            content: 'B+ Trees store all data pointers in leaf nodes linked sequentially as a doubly linked list, while internal nodes store routing keys only. This maximizes fan-out ($f \\approx 100-500$) and keeps tree height $\\le 3-4$ even for billions of rows, enabling both $O(\\log_f N)$ point lookups and fast range scans.',
+            subtopics: [
+              'Dense vs Sparse and Clustered vs Secondary Indexes',
+              'B Tree vs B+ Tree Structural Differences',
+              'Nested Loop Join, Sort-Merge Join, and Hash Join Cost Models'
+            ],
+            learningObjectives: [
+              'Compute B+ Tree order and disk I/O count for equality and range queries.',
+              'Compare B+ Trees and B Trees for range queries (`WHERE age BETWEEN 20 AND 30`).'
+            ],
+            keyPoints: [
+              'B+ Tree leaves are linked, making range queries sequential scans.',
+              'Internal nodes hold only keys, maximizing fan-out and minimizing disk seeks.'
+            ],
+            practiceQuestions: [
+              {
+                question: 'Why are B+ Trees preferred over B Trees for database disk indexes?',
+                hint: 'Consider internal node fan-out and range queries.',
+                answer: 'B+ Trees omit record pointers from internal nodes (higher fan-out, shallower tree) and link leaf nodes sequentially for efficient range queries.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'B+ Tree Properties',
+                type: 'summary',
+                summary: 'Order p: internal nodes have ceil(p/2) to p children; all leaves are at the exact same depth.'
+              }
             ],
             isCompleted: false
           }
@@ -226,11 +596,78 @@ export const initialSubjects: Subject[] = [
             title: 'TCP 3-Way Handshake & Reliable Delivery',
             estimatedMinutes: 30,
             content: 'TCP provides connection-oriented, ordered, reliable byte-stream transmission.\n\nHandshake sequence:\n1. Client sends `SYN` (seq = x)\n2. Server replies `SYN-ACK` (seq = y, ack = x + 1)\n3. Client responds `ACK` (seq = x + 1, ack = y + 1)\n\nCongestion control phases: Slow Start (exponential window growth), Congestion Avoidance (additive increase), and Fast Retransmit / Fast Recovery upon receiving 3 duplicate ACKs.',
+            subtopics: [
+              'TCP vs UDP Header Format & Multiplexing Ports',
+              '3-Way Connection Establishment & 4-Way FIN Teardown (TIME_WAIT)',
+              'Sliding Window Flow Control (Go-Back-N & Selective Repeat)',
+              'TCP Congestion Control: Slow Start, AIMD, Fast Retransmit'
+            ],
+            learningObjectives: [
+              'Trace sequence and acknowledgment numbers across a TCP connection lifecycle.',
+              'Contrast reactions of TCP Tahoes and TCP Reno to 3 duplicate ACKs vs Retransmission Timeout (RTO).'
+            ],
             keyPoints: [
               'SYN-ACK exchange establishes synchronized initial sequence numbers (ISNs).',
               'Additive Increase Multiplicative Decrease (AIMD) guarantees fairness across competing flows.'
             ],
+            practiceQuestions: [
+              {
+                question: 'What happens to cwnd and ssthresh in TCP Reno when 3 duplicate ACKs are received?',
+                hint: 'TCP Reno enters Fast Recovery instead of resetting cwnd to 1 MSS.',
+                answer: 'ssthresh is set to cwnd / 2, and cwnd is halved (cwnd = ssthresh + 3 MSS) rather than dropping to 1 MSS.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'TCP Congestion Control Cheat Sheet',
+                type: 'cheatsheet',
+                summary: 'Slow Start: cwnd doubles per RTT until ssthresh | Congestion Avoidance: cwnd += 1 MSS per RTT | Timeout: ssthresh = cwnd/2, cwnd = 1.'
+              }
+            ],
             isCompleted: true
+          }
+        ]
+      },
+      {
+        id: 'unit_cn_2',
+        unitNumber: 2,
+        title: 'Network Layer, IPv4 CIDR & Routing Protocols',
+        description: 'Subnetting, CIDR aggregation, NAT, Distance Vector (RIP), and Link State (OSPF).',
+        topics: [
+          {
+            id: 'top_cn_2_1',
+            title: 'IPv4 Subnetting, CIDR & OSPF vs BGP Routing',
+            estimatedMinutes: 40,
+            content: 'Classless Inter-Domain Routing (CIDR) uses variable-length subnet masks (e.g., `/24`) and longest-prefix matching in router forwarding tables.\n\n**Intra-AS Routing**:\n- **Distance Vector (RIP)**: Uses Bellman-Ford; suffers from count-to-infinity.\n- **Link State (OSPF)**: Floods link-state advertisements and runs Dijkstra’s algorithm locally.',
+            subtopics: [
+              'IPv4 Header Fields, TTL, and Fragmentation',
+              'CIDR Subnet Masks, Broadcast Addresses, and Longest Prefix Match',
+              'ARP, DHCP (DORA), and Network Address Translation (NAT)',
+              'Distance Vector vs Link State Routing'
+            ],
+            learningObjectives: [
+              'Calculate network address, broadcast address, and usable host range for any CIDR block.',
+              'Resolve routing table lookups using the Longest Prefix Match rule.'
+            ],
+            keyPoints: [
+              'A `/n` CIDR block provides $2^{32-n} - 2$ usable host addresses.',
+              'Routers forward packets using the entry with the longest matching subnet prefix.'
+            ],
+            practiceQuestions: [
+              {
+                question: 'How many usable host IP addresses are available in a 192.168.10.0/26 subnet?',
+                hint: 'Host bits = 32 - 26 = 6. Subtract network and broadcast addresses.',
+                answer: '2^6 - 2 = 64 - 2 = 62 usable host addresses.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'CIDR Quick Reference',
+                type: 'formula',
+                summary: '/24 -> 254 hosts | /25 -> 126 hosts | /26 -> 62 hosts | /27 -> 30 hosts | /28 -> 14 hosts | /30 -> 2 hosts.'
+              }
+            ],
+            isCompleted: false
           }
         ]
       }
@@ -256,11 +693,78 @@ export const initialSubjects: Subject[] = [
             title: 'Eulerian Graphs & Fleury’s Algorithm',
             estimatedMinutes: 30,
             content: 'A connected graph contains an **Eulerian circuit** (traversing every edge exactly once and returning to start) if and only if every vertex has an **even degree**.\n\nA graph has an Eulerian path if exactly 0 or 2 vertices have an odd degree.',
+            subtopics: [
+              'Handshaking Lemma ($\\sum \\deg(v) = 2|E|$)',
+              'Eulerian Paths and Circuits vs Hamiltonian Cycles',
+              'Planar Graphs & Euler’s Formula ($V - E + F = 2$)',
+              'Graph Coloring & Chromatic Number $\\chi(G)$'
+            ],
+            learningObjectives: [
+              'Determine whether a graph admits an Eulerian circuit or trail by inspecting vertex degrees.',
+              'Apply Euler’s planar graph formula $V - E + F = 2$ and Kuratowski’s theorem ($K_5, K_{3,3}$).'
+            ],
             keyPoints: [
               'Eulerian circuits depend solely on vertex degrees.',
               'Hamiltonian paths (visiting every vertex once) are NP-complete in general.'
             ],
+            practiceQuestions: [
+              {
+                question: 'A connected planar simple graph has 10 vertices and 15 edges. How many faces (regions) does its planar embedding divide the plane into?',
+                hint: 'Use Euler’s Planar Graph Formula: V - E + F = 2.',
+                answer: 'F = 2 - V + E = 2 - 10 + 15 = 7 faces.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'Graph Theory Theorems Card',
+                type: 'formula',
+                summary: 'Handshaking: Sum(deg) = 2E | Planar: V - E + F = 2 and E <= 3V - 6 | Bipartite iff no odd cycles.'
+              }
+            ],
             isCompleted: true
+          }
+        ]
+      },
+      {
+        id: 'unit_dm_2',
+        unitNumber: 2,
+        title: 'Propositional Logic, Relations & Combinatorics',
+        description: 'Logical equivalences, pigeonhole principle, inclusion-exclusion, and equivalence relations.',
+        topics: [
+          {
+            id: 'top_dm_2_1',
+            title: 'Equivalence Relations, POSETs & Pigeonhole Principle',
+            estimatedMinutes: 35,
+            content: 'A binary relation $R$ on set $A$ is:\n- **Equivalence Relation**: Reflexive, Symmetric, and Transitive (partitions $A$ into disjoint equivalence classes).\n- **Partial Order (POSET)**: Reflexive, Antisymmetric, and Transitive (visualized via Hasse diagrams).',
+            subtopics: [
+              'De Morgan’s Laws, Contrapositive, and Quantifier Negation',
+              'Reflexive, Symmetric, Antisymmetric, and Transitive Relations',
+              'Equivalence Classes & Hasse Diagrams for POSETs',
+              'Principle of Inclusion-Exclusion & Generalized Pigeonhole Principle'
+            ],
+            learningObjectives: [
+              'Classify binary relations and construct equivalence classes or Hasse diagrams.',
+              'Solve counting problems using the Generalized Pigeonhole Principle.'
+            ],
+            keyPoints: [
+              'Every equivalence relation uniquely partitions its underlying set.',
+              'Contrapositive $(\\neg q \\to \\neg p)$ is logically equivalent to $(p \\to q)$.'
+            ],
+            practiceQuestions: [
+              {
+                question: 'How many reflexive relations can be defined on a set A with n = 3 elements?',
+                hint: 'Diagonal elements (a, a) are fixed to 1; off-diagonal elements n^2 - n can be chosen freely.',
+                answer: '2^(n^2 - n) = 2^(9 - 3) = 2^6 = 64 reflexive relations.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'Counting Relations Formulas',
+                type: 'formula',
+                summary: 'Total relations = 2^(n^2) | Reflexive = 2^(n(n-1)) | Symmetric = 2^(n(n+1)/2) | Antisymmetric = 2^n * 3^(n(n-1)/2).'
+              }
+            ],
+            isCompleted: false
           }
         ]
       }
@@ -286,9 +790,82 @@ export const initialSubjects: Subject[] = [
             title: 'A* Search Algorithm & Admissible Heuristics',
             estimatedMinutes: 40,
             content: 'A* evaluates nodes using evaluation function $f(n) = g(n) + h(n)$:\n- $g(n)$: Exact path cost from start to node $n$.\n- $h(n)$: Estimated heuristic cost from $n$ to goal.\n\n**Admissibility**: An admissible heuristic never overestimates the true remaining distance ($h(n) \\le h^*(n)$). Admissible heuristics guarantee optimality in tree search, while consistency (monotonicity) guarantees optimality in graph search without reopening closed nodes.',
+            subtopics: [
+              'Uninformed vs Informed Search (BFS, UCS, Greedy Best-First, A*)',
+              'Admissibility ($h(n) \\le h^*(n)$) & Consistency ($h(n) \\le c(n,a,n\') + h(n\')$)',
+              'Heuristic Dominance & 8-Puzzle Manhattan vs Misplaced Tiles',
+              'Adversarial Search: Minimax & Alpha-Beta Pruning'
+            ],
+            learningObjectives: [
+              'Trace A* search node expansions and prove why admissible heuristics yield optimal paths.',
+              'Perform Alpha-Beta pruning on a game tree and identify pruned subtrees.'
+            ],
             keyPoints: [
               'A* is both complete and optimal under an admissible heuristic.',
               'Manhattan distance is admissible for grid pathfinding with 4-directional moves.'
+            ],
+            codeExamples: [
+              {
+                language: 'python',
+                code: 'def manhattan_heuristic(a: tuple[int, int], b: tuple[int, int]) -> int:\n    return abs(a[0] - b[0]) + abs(a[1] - b[1])'
+              }
+            ],
+            practiceQuestions: [
+              {
+                question: 'If heuristic h2(n) >= h1(n) for all nodes n and both are admissible, which heuristic expands fewer nodes in A*?',
+                hint: 'This property is called heuristic dominance.',
+                answer: 'h2 dominates h1 and will expand at most as many nodes as h1 (excluding ties where f(n) = C*).'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'Search Optimality & Completeness Matrix',
+                type: 'cheatsheet',
+                summary: 'BFS: Complete & Optimal (unit step cost) | UCS: Optimal for positive costs | A*: Optimal with admissible/consistent h(n).'
+              }
+            ],
+            isCompleted: false
+          }
+        ]
+      },
+      {
+        id: 'unit_ai_2',
+        unitNumber: 2,
+        title: 'Supervised Learning, Backpropagation & Transformers',
+        description: 'Gradient descent, bias-variance tradeoff, cross-entropy loss, backpropagation, and self-attention.',
+        topics: [
+          {
+            id: 'top_ai_2_1',
+            title: 'Gradient Descent, Backpropagation & Scaled Dot-Product Attention',
+            estimatedMinutes: 45,
+            content: 'Neural networks minimize a differentiable loss function $\\mathcal{L}(\\theta)$ via stochastic gradient descent:\n$$\\theta_{t+1} = \\theta_t - \\eta \\nabla_\\theta \\mathcal{L}(\\theta_t)$$\n\n**Transformer Self-Attention** computes contextual representations in parallel:\n$$\\text{Attention}(Q, K, V) = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V$$',
+            subtopics: [
+              'Bias-Variance Tradeoff, L1/L2 Regularization, and Cross-Validation',
+              'Chain Rule in Backpropagation & Vanishing Gradients (ReLU vs Sigmoid)',
+              'Softmax & Cross-Entropy Loss Derivation',
+              'Scaled Dot-Product Self-Attention & Multi-Head Attention'
+            ],
+            learningObjectives: [
+              'Explain why $\\sqrt{d_k}$ scaling prevents softmax saturation in Transformer self-attention.',
+              'Diagnose overfitting vs underfitting from training and validation loss curves.'
+            ],
+            keyPoints: [
+              'Scaling by $1/\\sqrt{d_k}$ keeps dot-product variance at 1, preventing vanishing softmax gradients.',
+              'L1 regularization induces sparsity; L2 regularization penalizes large weights smoothly.'
+            ],
+            practiceQuestions: [
+              {
+                question: 'Why do we divide QK^T by sqrt(d_k) in Scaled Dot-Product Attention?',
+                hint: 'If elements of q and k have mean 0 and variance 1, what is the variance of their dot product?',
+                answer: 'The dot product has variance d_k. For large d_k, large magnitudes push softmax into regions with near-zero gradients; dividing by sqrt(d_k) restores unit variance.'
+              }
+            ],
+            revisionResources: [
+              {
+                title: 'ML Evaluation Metrics Formula Sheet',
+                type: 'formula',
+                summary: 'Precision = TP/(TP+FP) | Recall = TP/(TP+FN) | F1 = 2*P*R/(P+R).'
+              }
             ],
             isCompleted: false
           }
@@ -469,15 +1046,42 @@ export const initialQuizzes: QuizQuestion[] = [
     options: ['Merge Sort', 'Quick Sort', 'Heap Sort', 'Radix Sort'],
     correctOption: 2,
     explanation: 'Heap Sort achieves O(n log n) worst-case time complexity and operates in-place using O(1) extra auxiliary memory.'
+  },
+  {
+    id: 'q_6',
+    subject: 'Discrete Mathematics',
+    question: 'A connected simple graph possesses an Eulerian circuit if and only if:',
+    options: [
+      'Every vertex has an odd degree',
+      'Every vertex has an even degree',
+      'The graph is bipartite and planar',
+      'The number of edges equals 3V - 6'
+    ],
+    correctOption: 1,
+    explanation: 'By Euler’s theorem, a connected undirected graph contains an Eulerian circuit traversing every edge once and returning to the origin if and only if every vertex has an even degree.'
+  },
+  {
+    id: 'q_7',
+    subject: 'Artificial Intelligence & Machine Learning',
+    question: 'In A* search, what condition on the heuristic function h(n) guarantees finding an optimal path in tree search?',
+    options: [
+      'h(n) must strictly overestimate h*(n)',
+      'h(n) must be admissible: 0 <= h(n) <= h*(n)',
+      'h(n) must equal g(n) at every node',
+      'h(n) must be negative for goal nodes'
+    ],
+    correctOption: 1,
+    explanation: 'An admissible heuristic never overestimates the true minimum cost to reach the goal (h(n) <= h*(n)), which guarantees A* expands the optimal goal path before any suboptimal goal path.'
   }
 ];
 
 export const initialFlashcards: Flashcard[] = [
   { id: 'fc_1', subject: 'Operating Systems', front: 'What is Thrashing in Virtual Memory?', back: 'Thrashing occurs when a computer spends more time paging data in and out of swap space than executing instructions, caused by insufficient physical frames for the active working sets.', mastered: false, timesReviewed: 3 },
-  { id: 'fc_2', subject: 'Data Structures', front: 'What is the worst-case time complexity of QuickSort?', back: 'O(n^2), which happens when the pivot chosen is always the extreme (minimum or maximum) element in an already sorted or reverse-sorted array without random pivoting.', mastered: true, timesReviewed: 5 },
-  { id: 'fc_3', subject: 'DBMS', front: 'What does the ACID "Isolation" property mean?', back: 'Transactions execute concurrently without interference; the intermediate states of a transaction are invisible to other concurrent transactions.', mastered: true, timesReviewed: 4 },
+  { id: 'fc_2', subject: 'Data Structures & Algorithms', front: 'What is the worst-case time complexity of QuickSort?', back: 'O(n^2), which happens when the pivot chosen is always the extreme (minimum or maximum) element in an already sorted or reverse-sorted array without random pivoting.', mastered: true, timesReviewed: 5 },
+  { id: 'fc_3', subject: 'Database Management Systems', front: 'What does the ACID "Isolation" property mean?', back: 'Transactions execute concurrently without interference; the intermediate states of a transaction are invisible to other concurrent transactions.', mastered: true, timesReviewed: 4 },
   { id: 'fc_4', subject: 'Computer Networks', front: 'What is the MTU of standard Ethernet?', back: '1500 bytes (payload size excluding the Ethernet header and frame check sequence).', mastered: false, timesReviewed: 2 },
-  { id: 'fc_5', subject: 'AI & ML', front: 'What makes a heuristic admissible in A* search?', back: 'A heuristic h(n) is admissible if it never overestimates the true lowest cost from node n to the goal: h(n) <= h*(n).', mastered: false, timesReviewed: 1 }
+  { id: 'fc_5', subject: 'Artificial Intelligence & Machine Learning', front: 'What makes a heuristic admissible in A* search?', back: 'A heuristic h(n) is admissible if it never overestimates the true lowest cost from node n to the goal: h(n) <= h*(n).', mastered: false, timesReviewed: 1 },
+  { id: 'fc_6', subject: 'Discrete Mathematics', front: 'State Euler’s Formula for connected planar graphs.', back: 'V - E + F = 2, where V is the number of vertices, E is the number of edges, and F is the number of faces (including the exterior infinite face).', mastered: false, timesReviewed: 2 }
 ];
 
 export const initialMockExams: MockExam[] = [
@@ -486,8 +1090,20 @@ export const initialMockExams: MockExam[] = [
     title: 'Mid-Semester Comprehensive CS Exam',
     subject: 'Computer Science Core',
     durationMinutes: 45,
-    totalMarks: 50,
+    totalMarks: 70,
     questions: initialQuizzes
+  },
+  {
+    id: 'mock_systems_2',
+    title: 'Systems & Algorithms Sprint Assessment',
+    subject: 'Data Structures & Operating Systems',
+    durationMinutes: 25,
+    totalMarks: 40,
+    questions: initialQuizzes.filter((q) =>
+      q.subject === 'Data Structures & Algorithms' ||
+      q.subject === 'Operating Systems' ||
+      q.subject === 'Database Management Systems'
+    )
   }
 ];
 

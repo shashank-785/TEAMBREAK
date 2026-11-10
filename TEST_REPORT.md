@@ -1,30 +1,49 @@
-# LearnOS Test Report
+# LearnOS Final Verification & Test Report
 
 ## Verified on 2026-11-10
 
-### Builds and dependency audit
+### 1. Automated Build & Test Summary
 
-- `npm run build`: client production build and server TypeScript build pass.
-- `npm test`: 13/13 server checks pass; client TypeScript check passes.
-- `npm audit`: zero known vulnerabilities.
+| Suite / Command | Result | Details |
+| :--- | :--- | :--- |
+| `npm run test:server` | **PASS (12/12)** | Unit, security, curriculum, AI fallback, and 19-step HTTP E2E + multi-user isolation suite |
+| `npm run test:client` | **PASS (4/4)** | TypeScript strict build check + frontend integration, curriculum, and route verification |
+| `npm test` | **PASS (16/16 total)** | Combined monorepo verification harness exits with code `0` |
+| `npm run build:client` | **PASS** | Vite production bundle generated (`dist/index.html`, CSS, JS chunks) |
+| `npm run build:server` | **PASS** | Server TypeScript compiled cleanly to `server/dist/` |
+| `npm run publish:pages` | **PASS** | Production client assets and `404.html` copied to `docs/` for GitHub Pages |
 
-### Local AI
+---
 
-- The embedded llama.cpp CPU runtime loads and disposes successfully.
-- Qwen3-1.7B Q8_0 GGUF is installed outside the repository and passes the setup script's size and SHA-256 verification.
-- Tests exercised real local text generation, streamed conversation context, and interview evaluation. No external AI API or Ollama was used.
-- The public setup-status endpoint reports model readiness without exposing server paths or internal error details.
+### 2. Backend & End-to-End Test Coverage (`server/test/api.test.ts`)
 
-### Authentication and browser checks
+1. **Authentication Secret Validation**: Confirms server rejects missing, short, or placeholder `AUTH_SECRET` values.
+2. **Public vs. Protected Route Enforcement**: Verifies `/api/system/health`, `/api/system/ai-setup`, and `/api/auth/status` are accessible publicly, while `/api/system/diagnostics` and all student data endpoints return `401 Unauthorized` without a valid bearer token.
+3. **Academic Profile Persistence**: Verifies updating and persisting `university`, `degree`, `branch`, `semester`, `subjects`, `learningInterests`, `careerInterests`, and `targetGpa`.
+4. **6-Subject CS Curriculum Verification**: Confirms all 6 core CS subjects (`CS301`, `CS302`, `CS303`, `CS304`, `MA301`, `CS305`) contain structured units, topics, subtopics, learning objectives, practice questions, and revision resources.
+5. **Study Planner CRUD**: Tests task creation, status transitions, priority updates, and deletion.
+6. **Notes & Documents CRUD & Search**: Tests creating, updating, searching, and deleting markdown study notes.
+7. **Exam Centre Retrieval**: Verifies quizzes, timed mock exams, PYQs, and flashcards.
+8. **Coding Lab Runtimes & Safe Execution**: Verifies language runtime catalog and safe sandbox behavior.
+9. **Coding Problem Evaluator**: Verifies test-case evaluation runner and result reporting.
+10. **Centralized AI Engine & Academic Fallbacks**: Verifies Socratic/Feynman tutor explanations, note summarization, flashcard/MCQ generation, and mock interview rubric evaluation.
+11. **Full 19-Step HTTP End-to-End Journey & Multi-User Isolation**:
+    - Registers Student A, tests logout token revocation, logs back in, completes academic onboarding.
+    - Fetches 6 CS subjects, adds a custom university topic, toggles topic completion, requests AI topic explanation, and runs a streaming AI Assistant conversation.
+    - Creates/completes tasks, adds timetable schedules, logs a 25-minute Pomodoro session.
+    - Creates a note, generates an AI summary and practice MCQs.
+    - Submits an Exam Centre quiz and verifies score history persistence.
+    - Saves solution code in Coding Lab and verifies persistence.
+    - Verifies Skill Development prerequisite lock enforcement (`400` on locked node, `200` on unlocked node) and conducts a mock interview session.
+    - Verifies Analytics summary and authenticated `/api/system/diagnostics`.
+    - Registers Student B, skips onboarding (`POST /api/auth/onboarding-skip`), and verifies **strict per-user data isolation** (Student B cannot see Student A's notes, quiz history, or progress).
+12. **Achievements System**: Confirms real milestone badge tracking.
 
-- API authorization tests verify that private notes, planner, and profile routes are not public; the AI setup-status endpoint is the only additional public system route.
-- An HTTP check confirmed unauthenticated notes requests receive `401`.
-- Browser checks completed account signup and onboarding, and confirmed the local-AI setup notice is shown both before signup and during onboarding.
-- Desktop and mobile dashboard layouts were visually checked. Progress cards use the account's stored values rather than fabricated sample metrics.
-- The API test suite uses an isolated temporary data directory.
+---
 
-### Known runtime limitations
+### 3. Frontend Verification Coverage (`client/test/frontend.test.mjs`)
 
-- No Piston endpoint is configured, so isolated multi-language code execution is unavailable in this environment; the test suite verifies that unavailable state.
-- The application still uses single-user JSON persistence and is not ready to serve multiple students with private data.
-- Browser-driven end-to-end coverage is not yet part of the automated test suite.
+1. **Production API Target**: Verifies `client/.env.production` targets `https://learnos-backend-ks49.onrender.com`.
+2. **Default Curriculum Completeness**: Confirms `client/src/data/defaultCurriculum.ts` includes all 6 CS subjects with units, subtopics, learning objectives, practice questions, and revision resources for offline/demo resilience.
+3. **API Client Contract Completeness**: Verifies all 48 client API methods across all 10 modules exist in `client/src/services/api.ts` and match backend Express routes.
+4. **Module Component Integrity**: Verifies all 10 module pages and core layout/auth components are present and non-empty.

@@ -1,15 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { 
   Calendar, CheckSquare, Clock, Plus, Trash2, 
-  RotateCcw, Play, Pause, Volume2, VolumeX, Sparkles, 
-  Flame, CheckCircle2, AlertCircle, ArrowRight
+  RotateCcw, Play, Pause, Volume2, Edit3,
+  CheckCircle2, ArrowRight
 } from 'lucide-react';
 import { api } from '../../services/api';
-import { PlannerTask, ScheduleItem, RevisionItem } from '../../types';
+import { PlannerTask, ScheduleItem, RevisionItem, User } from '../../types';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
 
+const SUBJECT_OPTIONS = [
+  'Data Structures & Algorithms',
+  'Operating Systems',
+  'Database Management Systems',
+  'Computer Networks',
+  'Discrete Mathematics',
+  'Artificial Intelligence & Machine Learning',
+  'General'
+];
+
 export const StudyPlanner: React.FC = () => {
+  const outlet = useOutletContext<{ user?: User | null; setUser?: (u: User) => void }>() || {};
   const [activeTab, setActiveTab] = useState<'tasks' | 'timetable' | 'revision' | 'pomodoro'>('tasks');
   const [tasks, setTasks] = useState<PlannerTask[]>([]);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
@@ -23,12 +35,25 @@ export const StudyPlanner: React.FC = () => {
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [newTaskCategory, setNewTaskCategory] = useState<'assignment' | 'exam_prep' | 'reading' | 'coding'>('assignment');
 
+  // Task Edit Modal State
+  const [editingTask, setEditingTask] = useState<PlannerTask | null>(null);
+
+  // Schedule Creation Modal State
+  const [isNewScheduleOpen, setIsNewScheduleOpen] = useState(false);
+  const [newSchedTitle, setNewSchedTitle] = useState('');
+  const [newSchedDay, setNewSchedDay] = useState(1);
+  const [newSchedStart, setNewSchedStart] = useState('09:00');
+  const [newSchedEnd, setNewSchedEnd] = useState('10:30');
+  const [newSchedType, setNewSchedType] = useState<'lecture' | 'lab' | 'self_study' | 'revision'>('lecture');
+  const [newSchedLocation, setNewSchedLocation] = useState('Room 301 / Study Desk');
+
   // Pomodoro Timer State
   const [timerMode, setTimerMode] = useState<'work' | 'shortBreak' | 'longBreak'>('work');
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [completedSessions, setCompletedSessions] = useState(3);
   const [ambientSound, setAmbientSound] = useState<'none' | 'white' | 'rain' | 'binaural'>('none');
+  const [pomodoroNotice, setPomodoroNotice] = useState('');
 
   // Web Audio Context for offline ambient sounds
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -40,23 +65,30 @@ export const StudyPlanner: React.FC = () => {
     api.getRevisions().then(setRevisions);
   }, []);
 
+  const completeFocusBlock = async () => {
+    setCompletedSessions(prev => prev + 1);
+    const totalHours = await api.recordPomodoro();
+    if (typeof totalHours === 'number' && outlet.user && outlet.setUser) {
+      outlet.setUser({ ...outlet.user, totalStudyHours: totalHours });
+    }
+    setPomodoroNotice('Focus session logged (+25 mins added to your study analytics).');
+    setTimeout(() => setPomodoroNotice(''), 5000);
+  };
+
   // Pomodoro countdown effect
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     if (isRunning && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
     } else if (isRunning && timeLeft === 0) {
-      // Completed session
       setIsRunning(false);
       if (timerMode === 'work') {
-        setCompletedSessions(prev => prev + 1);
-        api.recordPomodoro();
-        alert('🎉 Focus Session Completed! Take a well-deserved break.');
+        void completeFocusBlock();
         switchTimerMode('shortBreak');
       } else {
-        alert('Break finished! Ready to focus?');
+        setPomodoroNotice('Break finished! Ready for your next focus block.');
         switchTimerMode('work');
       }
     }
@@ -81,7 +113,6 @@ export const StudyPlanner: React.FC = () => {
 
   // Web Audio Synthesizer for offline ambient focus sounds
   const toggleAmbientSound = (type: 'none' | 'white' | 'rain' | 'binaural') => {
-    // Stop prior
     if (noiseNodeRef.current) {
       try { (noiseNodeRef.current as any).stop?.(); } catch {}
       noiseNodeRef.current.disconnect();
@@ -102,7 +133,6 @@ export const StudyPlanner: React.FC = () => {
       const ctx = new AudioCtx();
       audioContextRef.current = ctx;
 
-      // Generate White Noise Buffer
       const bufferSize = 2 * ctx.sampleRate;
       const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const output = noiseBuffer.getChannelData(0);
@@ -114,7 +144,6 @@ export const StudyPlanner: React.FC = () => {
       whiteNoise.buffer = noiseBuffer;
       whiteNoise.loop = true;
 
-      // Filter
       const filter = ctx.createBiquadFilter();
       if (type === 'rain') {
         filter.type = 'lowpass';
@@ -128,7 +157,7 @@ export const StudyPlanner: React.FC = () => {
       }
 
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.08, ctx.currentTime); // gentle ambient volume
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
 
       whiteNoise.connect(filter);
       filter.connect(gain);
@@ -148,7 +177,7 @@ export const StudyPlanner: React.FC = () => {
     if (!newTaskTitle.trim()) return;
 
     const created = await api.createTask({
-      title: newTaskTitle,
+      title: newTaskTitle.trim(),
       subjectName: newTaskSubject,
       dueDate: newTaskDueDate,
       priority: newTaskPriority,
@@ -161,6 +190,23 @@ export const StudyPlanner: React.FC = () => {
     setNewTaskTitle('');
   };
 
+  const handleSaveEditedTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTask || !editingTask.title.trim()) return;
+    const updated = await api.updateTask(editingTask.id, {
+      title: editingTask.title.trim(),
+      subjectName: editingTask.subjectName,
+      dueDate: editingTask.dueDate,
+      priority: editingTask.priority,
+      status: editingTask.status,
+      category: editingTask.category
+    });
+    if (updated) {
+      setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
+    }
+    setEditingTask(null);
+  };
+
   const handleUpdateTaskStatus = async (taskId: string, newStatus: 'todo' | 'in_progress' | 'completed') => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
     await api.updateTask(taskId, { status: newStatus });
@@ -171,12 +217,43 @@ export const StudyPlanner: React.FC = () => {
     await api.deleteTask(taskId);
   };
 
+  const handleCreateSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSchedTitle.trim()) return;
+    const created = await api.createSchedule({
+      title: newSchedTitle.trim(),
+      subject: newSchedTitle.trim(),
+      dayOfWeek: Number(newSchedDay),
+      startTime: newSchedStart,
+      endTime: newSchedEnd,
+      type: newSchedType,
+      location: newSchedLocation.trim() || 'Campus'
+    });
+    setSchedules(prev => [...prev, created]);
+    setIsNewScheduleOpen(false);
+    setNewSchedTitle('');
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    setSchedules(prev => prev.filter(s => s.id !== id));
+    await api.deleteSchedule(id);
+  };
+
   const handleAdvanceRevision = async (id: string) => {
     const updated = await api.advanceRevision(id);
     if (updated) {
       setRevisions(prev => prev.map(r => r.id === id ? updated : r));
     }
   };
+
+  const daysOfWeek = [
+    { label: 'Monday', value: 1 },
+    { label: 'Tuesday', value: 2 },
+    { label: 'Wednesday', value: 3 },
+    { label: 'Thursday', value: 4 },
+    { label: 'Friday', value: 5 },
+    { label: 'Saturday', value: 6 },
+  ];
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -193,7 +270,7 @@ export const StudyPlanner: React.FC = () => {
         </div>
 
         {/* View Tabs */}
-        <div className="flex items-center gap-2 bg-[#151923] p-1.5 rounded-xl border border-[#232936]">
+        <div className="flex flex-wrap items-center gap-2 bg-[#151923] p-1.5 rounded-xl border border-[#232936]">
           {[
             { id: 'tasks', label: 'Task Kanban', icon: CheckSquare },
             { id: 'timetable', label: 'Class Timetable', icon: Calendar },
@@ -225,7 +302,7 @@ export const StudyPlanner: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs text-[#94A3B8]">
-              <span>Active Sprint Tasks: {tasks.filter(t => t.status !== 'completed').length} pending</span>
+              <span>Active Sprint Tasks: {tasks.filter(t => t.status !== 'completed').length} pending • {tasks.filter(t => t.status === 'completed').length} completed</span>
             </div>
             <button
               onClick={() => setIsNewTaskOpen(true)}
@@ -249,13 +326,18 @@ export const StudyPlanner: React.FC = () => {
                   <div key={task.id} className="p-4 rounded-xl bg-[#0B0D12] border border-[#232936] hover:border-slate-700 space-y-2.5 transition-all">
                     <div className="flex items-start justify-between gap-2">
                       <h4 className="text-xs font-semibold text-[#F8FAFC]">{task.title}</h4>
-                      <button onClick={() => handleDeleteTask(task.id)} className="text-[#94A3B8] hover:text-rose-400">
-                        <Trash2 size={13} />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button onClick={() => setEditingTask(task)} title="Edit task" className="text-[#94A3B8] hover:text-indigo-400">
+                          <Edit3 size={13} />
+                        </button>
+                        <button onClick={() => handleDeleteTask(task.id)} title="Delete task" className="text-[#94A3B8] hover:text-rose-400">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-[#94A3B8]">
                       <span>{task.subjectName}</span>
-                      <Badge variant={task.priority === 'high' ? 'danger' : 'warning'} size="sm">{task.priority}</Badge>
+                      <Badge variant={task.priority === 'high' ? 'danger' : task.priority === 'medium' ? 'warning' : 'neutral'} size="sm">{task.priority}</Badge>
                     </div>
                     <div className="pt-2 border-t border-[#232936] flex items-center justify-between text-[11px]">
                       <span className="text-[#94A3B8]">Due: {task.dueDate}</span>
@@ -284,13 +366,18 @@ export const StudyPlanner: React.FC = () => {
                   <div key={task.id} className="p-4 rounded-xl bg-[#0B0D12] border border-amber-500/20 hover:border-amber-500/40 space-y-2.5 transition-all">
                     <div className="flex items-start justify-between gap-2">
                       <h4 className="text-xs font-semibold text-[#F8FAFC]">{task.title}</h4>
-                      <button onClick={() => handleDeleteTask(task.id)} className="text-[#94A3B8] hover:text-rose-400">
-                        <Trash2 size={13} />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button onClick={() => setEditingTask(task)} title="Edit task" className="text-[#94A3B8] hover:text-indigo-400">
+                          <Edit3 size={13} />
+                        </button>
+                        <button onClick={() => handleDeleteTask(task.id)} title="Delete task" className="text-[#94A3B8] hover:text-rose-400">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-[#94A3B8]">
                       <span>{task.subjectName}</span>
-                      <Badge variant="warning" size="sm">{task.priority}</Badge>
+                      <Badge variant={task.priority === 'high' ? 'danger' : 'warning'} size="sm">{task.priority}</Badge>
                     </div>
                     <div className="pt-2 border-t border-[#232936] flex items-center justify-between text-[11px]">
                       <button
@@ -324,9 +411,14 @@ export const StudyPlanner: React.FC = () => {
                   <div key={task.id} className="p-4 rounded-xl bg-[#0B0D12] border border-emerald-500/20 opacity-80 space-y-2.5">
                     <div className="flex items-start justify-between gap-2">
                       <h4 className="text-xs font-semibold text-[#F8FAFC] line-through">{task.title}</h4>
-                      <button onClick={() => handleDeleteTask(task.id)} className="text-[#94A3B8] hover:text-rose-400">
-                        <Trash2 size={13} />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button onClick={() => setEditingTask(task)} title="Edit task" className="text-[#94A3B8] hover:text-indigo-400">
+                          <Edit3 size={13} />
+                        </button>
+                        <button onClick={() => handleDeleteTask(task.id)} title="Delete task" className="text-[#94A3B8] hover:text-rose-400">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                     <div className="text-[11px] text-[#94A3B8]">{task.subjectName}</div>
                     <div className="pt-2 border-t border-[#232936] flex items-center justify-between text-[11px]">
@@ -351,31 +443,52 @@ export const StudyPlanner: React.FC = () => {
       {/* TAB 2: CLASS TIMETABLE GRID */}
       {activeTab === 'timetable' && (
         <div className="bg-[#151923] border border-[#232936] rounded-xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-[#F8FAFC]">Weekly Class & Study Schedule</h3>
-            <span className="text-xs text-[#94A3B8]">Semester 5 Grid</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-[#F8FAFC]">Weekly Class & Study Schedule</h3>
+              <span className="text-xs text-[#94A3B8]">Customize your lectures, labs, and dedicated study blocks</span>
+            </div>
+            <button
+              onClick={() => setIsNewScheduleOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 self-start sm:self-auto"
+            >
+              <Plus size={14} />
+              <span>Add Schedule Slot</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((day, dayIndex) => {
-              const daySchedules = schedules.filter(s => s.dayOfWeek === dayIndex + 1);
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+            {daysOfWeek.map((day) => {
+              const daySchedules = schedules
+                .filter(s => s.dayOfWeek === day.value)
+                .sort((a, b) => a.startTime.localeCompare(b.startTime));
               return (
-                <div key={day} className="p-3 rounded-xl bg-[#0B0D12] border border-[#232936] space-y-3">
-                  <div className="text-xs font-bold text-indigo-400 pb-2 border-b border-[#232936]">
-                    {day}
+                <div key={day.label} className="p-3 rounded-xl bg-[#0B0D12] border border-[#232936] space-y-3">
+                  <div className="text-xs font-bold text-indigo-400 pb-2 border-b border-[#232936] flex items-center justify-between">
+                    <span>{day.label}</span>
+                    <span className="text-[10px] text-[#94A3B8]">{daySchedules.length}</span>
                   </div>
                   <div className="space-y-2">
                     {daySchedules.length > 0 ? (
                       daySchedules.map(item => (
                         <div 
                           key={item.id} 
-                          className={`p-2.5 rounded-lg border text-xs space-y-1 ${
+                          className={`p-2.5 rounded-lg border text-xs space-y-1 relative group ${
                             item.type === 'lecture' ? 'bg-indigo-950/20 border-indigo-500/30' :
                             item.type === 'lab' ? 'bg-emerald-950/20 border-emerald-500/30' :
                             'bg-amber-950/20 border-amber-500/30'
                           }`}
                         >
-                          <div className="font-semibold text-[#F8FAFC]">{item.title}</div>
+                          <div className="flex items-start justify-between gap-1">
+                            <div className="font-semibold text-[#F8FAFC] leading-snug">{item.title}</div>
+                            <button
+                              onClick={() => handleDeleteSchedule(item.id)}
+                              title="Remove slot"
+                              className="text-[#94A3B8] hover:text-rose-400 opacity-70 group-hover:opacity-100"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                           <div className="text-[11px] text-[#94A3B8]">{item.startTime} - {item.endTime}</div>
                           <div className="text-[10px] text-indigo-300 font-mono">{item.location}</div>
                         </div>
@@ -482,8 +595,14 @@ export const StudyPlanner: React.FC = () => {
               {formatTimer(timeLeft)}
             </div>
 
+            {pomodoroNotice && (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300">
+                {pomodoroNotice}
+              </div>
+            )}
+
             {/* Timer Controls */}
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 onClick={() => setIsRunning(!isRunning)}
                 className={`px-8 py-3.5 rounded-xl font-bold text-sm shadow-xl flex items-center gap-2 transition-all active:scale-95 ${
@@ -502,6 +621,14 @@ export const StudyPlanner: React.FC = () => {
                 title="Reset Timer"
               >
                 <RotateCcw size={18} />
+              </button>
+
+              <button
+                onClick={() => void completeFocusBlock()}
+                className="px-4 py-3.5 bg-[#0B0D12] hover:bg-[#1C2230] text-emerald-400 rounded-xl border border-emerald-500/30 text-xs font-semibold transition-colors"
+                title="Log a completed 25-minute study session"
+              >
+                + Log Completed Session
               </button>
             </div>
           </div>
@@ -547,7 +674,7 @@ export const StudyPlanner: React.FC = () => {
                 <span className="text-lg font-bold text-amber-400 font-mono">{completedSessions}</span>
               </div>
               <div className="mt-2 text-xs text-[#94A3B8]">
-                🔥 Streak bonus active: +0.42 hrs logged to your student analytics per finished block.
+                Each finished focus block logs +0.42 hrs directly to your student analytics and daily activity heatmap.
               </div>
             </div>
           </div>
@@ -577,12 +704,9 @@ export const StudyPlanner: React.FC = () => {
                 onChange={(e) => setNewTaskSubject(e.target.value)}
                 className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
               >
-                <option value="Data Structures & Algorithms">Data Structures</option>
-                <option value="Operating Systems">Operating Systems</option>
-                <option value="Database Management Systems">Database Systems</option>
-                <option value="Computer Networks">Computer Networks</option>
-                <option value="AI & Machine Learning">AI & ML</option>
-                <option value="General">General</option>
+                {SUBJECT_OPTIONS.map(sub => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
               </select>
             </div>
 
@@ -594,8 +718,7 @@ export const StudyPlanner: React.FC = () => {
                 value={newTaskDueDate}
                 onChange={(e) => setNewTaskDueDate(e.target.value)}
                 className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
-              >
-              </input>
+              />
             </div>
           </div>
 
@@ -641,6 +764,205 @@ export const StudyPlanner: React.FC = () => {
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30"
             >
               Create Task
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal: Edit Task */}
+      <Modal isOpen={Boolean(editingTask)} onClose={() => setEditingTask(null)} title="Edit Study Task">
+        {editingTask && (
+          <form onSubmit={handleSaveEditedTask} className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-[#94A3B8]">Task Title</label>
+              <input
+                type="text"
+                required
+                value={editingTask.title}
+                onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+                className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-[#94A3B8]">Subject</label>
+                <select
+                  value={editingTask.subjectName}
+                  onChange={(e) => setEditingTask({ ...editingTask, subjectName: e.target.value })}
+                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
+                >
+                  {SUBJECT_OPTIONS.map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[#94A3B8]">Due Date</label>
+                <input
+                  type="date"
+                  required
+                  value={editingTask.dueDate}
+                  onChange={(e) => setEditingTask({ ...editingTask, dueDate: e.target.value })}
+                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-medium text-[#94A3B8]">Priority</label>
+                <select
+                  value={editingTask.priority}
+                  onChange={(e) => setEditingTask({ ...editingTask, priority: e.target.value as any })}
+                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC]"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[#94A3B8]">Category</label>
+                <select
+                  value={editingTask.category}
+                  onChange={(e) => setEditingTask({ ...editingTask, category: e.target.value as any })}
+                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC]"
+                >
+                  <option value="assignment">Assignment</option>
+                  <option value="exam_prep">Exam Prep</option>
+                  <option value="reading">Reading</option>
+                  <option value="coding">Coding</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[#94A3B8]">Status</label>
+                <select
+                  value={editingTask.status}
+                  onChange={(e) => setEditingTask({ ...editingTask, status: e.target.value as any })}
+                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC]"
+                >
+                  <option value="todo">To Do</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <button
+                type="button"
+                onClick={() => setEditingTask(null)}
+                className="px-4 py-2 text-xs text-[#94A3B8] hover:text-[#F8FAFC]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30"
+              >
+                Save Task Changes
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Modal: Create Schedule Slot */}
+      <Modal isOpen={isNewScheduleOpen} onClose={() => setIsNewScheduleOpen(false)} title="Add Class / Study Schedule Slot">
+        <form onSubmit={handleCreateSchedule} className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-[#94A3B8]">Course or Session Title</label>
+            <input
+              type="text"
+              required
+              value={newSchedTitle}
+              onChange={(e) => setNewSchedTitle(e.target.value)}
+              placeholder="E.g., CS301: Algorithms Lecture"
+              className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-[#94A3B8]">Day of Week</label>
+              <select
+                value={newSchedDay}
+                onChange={(e) => setNewSchedDay(Number(e.target.value))}
+                className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC]"
+              >
+                {daysOfWeek.map(d => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-[#94A3B8]">Session Type</label>
+              <select
+                value={newSchedType}
+                onChange={(e) => setNewSchedType(e.target.value as any)}
+                className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC]"
+              >
+                <option value="lecture">Lecture</option>
+                <option value="lab">Lab Practical</option>
+                <option value="self_study">Self Study Session</option>
+                <option value="revision">Revision Block</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-[#94A3B8]">Start Time</label>
+              <input
+                type="time"
+                required
+                value={newSchedStart}
+                onChange={(e) => setNewSchedStart(e.target.value)}
+                className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC]"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-[#94A3B8]">End Time</label>
+              <input
+                type="time"
+                required
+                value={newSchedEnd}
+                onChange={(e) => setNewSchedEnd(e.target.value)}
+                className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-[#94A3B8]">Location / Room</label>
+            <input
+              type="text"
+              value={newSchedLocation}
+              onChange={(e) => setNewSchedLocation(e.target.value)}
+              placeholder="E.g., Lecture Hall B2 / Library"
+              className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC]"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <button
+              type="button"
+              onClick={() => setIsNewScheduleOpen(false)}
+              className="px-4 py-2 text-xs text-[#94A3B8] hover:text-[#F8FAFC]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30"
+            >
+              Add to Timetable
             </button>
           </div>
         </form>

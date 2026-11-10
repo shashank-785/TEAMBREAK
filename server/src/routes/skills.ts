@@ -1,94 +1,125 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { db } from '../db/db.js';
+import { AuthRequest } from '../middleware/auth.js';
 import { aiService } from '../services/aiService.js';
-import { MockInterviewSession } from '../types/index.js';
 
 const router = Router();
 
-// Get skill roadmaps
-router.get('/roadmaps', (req: Request, res: Response) => {
-  res.json({ success: true, roadmaps: db.getRoadmaps() });
+router.get('/roadmaps', (req: AuthRequest, res: Response) => {
+  res.json({ success: true, roadmaps: db.getRoadmaps(req.auth?.userId) });
 });
 
-// Update skill node status (unlock or master)
-router.post('/roadmaps/:roadmapId/nodes/:nodeId/status', (req: Request, res: Response) => {
+function handleUpdateSkillNode(req: AuthRequest, res: Response) {
   const { roadmapId, nodeId } = req.params;
-  const { status } = req.body; // 'locked' | 'available' | 'in_progress' | 'mastered'
-  const ok = db.updateSkillNode(roadmapId, nodeId, status);
-  res.json({ success: ok });
-});
-
-// Start a new mock interview session
-router.post('/interview/start', async (req: Request, res: Response) => {
-  const { role, level } = req.body; // e.g. role: 'Frontend Engineer', level: 'Junior/Intern'
-  const targetRole = role || 'Full-Stack Software Engineer';
-  const targetLevel = level || 'Undergraduate Internship';
-
-  const initialQuestions: Record<string, string> = {
-    'Frontend Engineer': "Welcome to your technical interview for Frontend Engineer! Let's start with state and rendering: Can you explain how the React Virtual DOM diffing algorithm works, and why using array indices as `key` props can cause rendering bugs?",
-    'Backend Engineer': "Welcome! Let's begin with database design: When would you choose an optimistic locking strategy versus a pessimistic locking strategy in a high-concurrency payment system?",
-    'AI Engineer': "Welcome! Let's start with deep learning fundamentals: Can you explain the vanishing gradient problem, why it occurs in deep networks with sigmoid activations, and how modern architectures mitigate it?",
-    'Full-Stack AI Engineer': "Welcome! Suppose you are designing an AI coding assistant like LearnOS. How would you architect the backend to securely execute untrusted user code while maintaining sub-second API latency?"
-  };
-
-  const firstQuestion = initialQuestions[targetRole] || initialQuestions['Full-Stack AI Engineer'];
-
-  const session: MockInterviewSession = {
-    id: 'int_' + Date.now().toString(36),
-    role: targetRole,
-    level: targetLevel,
-    messages: [
-      {
-        sender: 'ai',
-        text: firstQuestion,
-        timestamp: new Date().toISOString()
-      }
-    ]
-  };
-
-  db.saveInterview(session);
-  res.json({ success: true, session });
-});
-
-// Submit an interview response and receive AI feedback / next question
-router.post('/interview/:id/respond', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { answer } = req.body;
-
-  const interviews = db.getInterviews();
-  const session = interviews.find(i => i.id === id);
-  if (!session) return res.status(404).json({ success: false, error: 'Interview session not found' });
-
-  if (typeof answer !== 'string' || !answer.trim() || answer.length > 8000) {
-    return res.status(400).json({ success: false, error: 'Answer must contain 1-8000 characters.' });
+  const { status } = req.body || {};
+  const validStatuses = ['locked', 'available', 'in_progress', 'mastered'] as const;
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ success: false, error: 'Invalid skill node status.' });
   }
 
+  const roadmaps = db.getRoadmaps(req.auth?.userId);
+  const roadmap = roadmaps.find((r) => r.id === roadmapId);
+  const node = roadmap?.nodes.find((n) => n.id === nodeId);
+  if (!roadmap || !node) {
+    return res.status(404).json({ success: false, error: 'Roadmap or skill node not found' });
+  }
+
+  // Check prerequisites if moving to in_progress or mastered
+  if ((status === 'in_progress' || status === 'mastered') && node.prerequisites.length > 0) {
+    const masteredIds = new Set(roadmap.nodes.filter((n) => n.status === 'mastered').map((n) => n.id));
+    const unmet = node.prerequisites.filter((preId) => !masteredIds.has(preId));
+    if (unmet.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Complete all prerequisite skill nodes before starting or mastering this module.'
+      });
+    }
+  }
+
+  const updated = db.updateSkillNodeStatus(roadmapId, nodeId, status, req.auth?.userId);
+  return res.json({ success: true, roadmap: updated });
+}
+
+router.patch('/roadmaps/:roadmapId/nodes/:nodeId', handleUpdateSkillNode);
+router.post('/roadmaps/:roadmapId/nodes/:nodeId/status', handleUpdateSkillNode);
+
+// Start AI Mock Interview
+router.post('/interview/start', (req: AuthRequest, res: Response) => {
+  const { role = 'Full-Stack AI Engineer', level = 'Intern / New Grad' } = req.body || {};
+
+  const starterQuestions: Record<string, string> = {
+    'Full-Stack AI Engineer':
+      'Welcome to your technical mock interview! Let’s start with a systems design question: How would you architect a streaming AI tutoring endpoint that handles concurrent student sessions while enforcing per-user rate limits and maintaining conversation context?',
+    'Backend Systems Engineer':
+      'Welcome! Imagine your PostgreSQL database is experiencing high read latency on a table with 50M rows. Walk me through how you would diagnose the bottleneck, design composite B+ Tree indexes, and introduce a Redis caching layer without serving stale data.',
+    'Machine Learning Engineer':
+      'Welcome! Explain the bias-variance tradeoff in deep neural networks, and walk through how Scaled Dot-Product Attention in Transformers prevents vanishing gradients compared to recurrent architectures.',
+    'Frontend Architect':
+      'Welcome! How does React’s Fiber reconciliation algorithm prioritize concurrent user interactions over heavy background rendering, and how would you optimize a dashboard rendering 10,000 live telemetry nodes?'
+  };
+
+  const firstQuestion =
+    starterQuestions[role] ||
+    `Welcome to your ${level} ${role} technical interview! Walk me through a challenging system or algorithm you have designed recently, including its time/space complexity and key architectural tradeoffs.`;
+
+  const session = db.createInterviewSession(role, level, firstQuestion, req.auth?.userId);
+  res.status(201).json({ success: true, session });
+});
+
+// Submit answer in Mock Interview (support both /answer and /respond)
+async function handleInterviewAnswer(req: AuthRequest, res: Response) {
+  const session = db.getInterviewSession(req.params.id, req.auth?.userId);
+  if (!session) {
+    return res.status(404).json({ success: false, error: 'Interview session not found' });
+  }
+
+  const { answer } = req.body || {};
+  if (typeof answer !== 'string' || !answer.trim()) {
+    return res.status(400).json({ success: false, error: 'A non-empty answer is required.' });
+  }
+
+  const lastAiQuestion =
+    [...session.messages].reverse().find((m) => m.sender === 'ai')?.text || 'Explain your technical approach.';
+
+  session.messages.push({
+    sender: 'user',
+    text: answer.trim(),
+    timestamp: new Date().toISOString()
+  });
+
   try {
-    const lastAiQuestion = session.messages.filter(m => m.sender === 'ai').slice(-1)[0]?.text || 'Technical question';
+    aiService.enforceRateLimit(req.auth?.userId || 'anonymous');
     const evaluation = await aiService.evaluateInterview(lastAiQuestion, answer.trim(), session.role);
     session.messages.push({
-      sender: 'user',
-      text: answer.trim(),
+      sender: 'ai',
+      text: evaluation.followUpQuestion,
       timestamp: new Date().toISOString()
     });
     session.score = evaluation.score;
-    session.feedback = evaluation;
-
-    const aiFeedbackText = `### Interviewer feedback: ${evaluation.score}/100\n\n**Assessment:** ${evaluation.summary}\n\n**Strengths:**\n${evaluation.strengths.map(item => `- ${item}`).join('\n')}\n\n**Areas for improvement:**\n${evaluation.improvements.map(item => `- ${item}`).join('\n')}\n\n---\n**Follow-up question:**\n${evaluation.followUpQuestion}`;
+    session.feedback = evaluation.feedback;
+    const saved = db.saveInterviewSession(session, req.auth?.userId);
+    return res.json({ success: true, session: saved, evaluation, fallback: false });
+  } catch {
+    const evaluation = aiService.evaluateInterviewFallback(lastAiQuestion, answer.trim(), session.role);
     session.messages.push({
       sender: 'ai',
-      text: aiFeedbackText,
+      text: evaluation.followUpQuestion,
       timestamp: new Date().toISOString()
     });
-
-    db.saveInterview(session);
-    res.json({ success: true, session, evaluation });
-  } catch (error) {
-    res.status(502).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'The AI interview evaluation failed.'
+    session.score = evaluation.score;
+    session.feedback = evaluation.feedback;
+    const saved = db.saveInterviewSession(session, req.auth?.userId);
+    return res.json({
+      success: true,
+      session: saved,
+      evaluation,
+      fallback: true,
+      aiNotice: 'Evaluated using LearnOS Structured Engineering Rubric'
     });
   }
-});
+}
+
+router.post('/interview/:id/answer', handleInterviewAnswer);
+router.post('/interview/:id/respond', handleInterviewAnswer);
 
 export default router;

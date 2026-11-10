@@ -2,11 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { 
   Settings, User, Activity, HelpCircle, BookOpen,
-  CheckCircle2, XCircle, Shield, Sparkles, Save, Loader2
+  Sparkles, Save, Loader2, CheckCircle2
 } from 'lucide-react';
 import { User as UserType } from '../../types';
 import { Badge } from '../../components/Badge';
 import { api } from '../../services/api';
+
+const CORE_SUBJECTS = [
+  'Data Structures & Algorithms',
+  'Operating Systems',
+  'Database Management Systems',
+  'Computer Networks',
+  'Discrete Mathematics',
+  'Artificial Intelligence & Machine Learning'
+];
 
 export const ProfileSettings: React.FC = () => {
   const { user, setUser } = useOutletContext<{ user: UserType | null; setUser: (u: UserType) => void }>();
@@ -15,11 +24,20 @@ export const ProfileSettings: React.FC = () => {
   // Profile Form
   const [name, setName] = useState('');
   const [university, setUniversity] = useState('');
-  const [major, setMajor] = useState('');
+  const [degree, setDegree] = useState('B.Tech');
+  const [branch, setBranch] = useState('Computer Science & Engineering');
   const [semester, setSemester] = useState(5);
+  const [currentGpa, setCurrentGpa] = useState(8.5);
   const [targetGpa, setTargetGpa] = useState(9.00);
   const [dreamRole, setDreamRole] = useState('');
+  const [codingExperience, setCodingExperience] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(CORE_SUBJECTS);
+  const [learningInterestsText, setLearningInterestsText] = useState('');
+  const [careerInterestsText, setCareerInterestsText] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileNotice, setProfileNotice] = useState('');
+
+  // Syllabus State
   const [syllabusText, setSyllabusText] = useState(() => localStorage.getItem('learnos_syllabus_text') || '');
   const [coursesText, setCoursesText] = useState(() => localStorage.getItem('learnos_courses_text') || '');
   const [syllabusFileName, setSyllabusFileName] = useState(() => localStorage.getItem('learnos_syllabus_file') || '');
@@ -31,62 +49,109 @@ export const ProfileSettings: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      setName(user.name);
-      setUniversity(user.university);
-      setMajor(user.major);
-      setSemester(user.semester);
-      setTargetGpa(user.targetGpa);
-      setDreamRole(user.dreamRole);
+      setName(user.name || '');
+      setUniversity(user.university || '');
+      setDegree(user.degree || 'B.Tech');
+      setBranch(user.branch || user.major || 'Computer Science & Engineering');
+      setSemester(user.semester || 5);
+      setCurrentGpa(user.currentGpa ?? 8.5);
+      setTargetGpa(user.targetGpa ?? 9.0);
+      setDreamRole(user.dreamRole || '');
+      setCodingExperience(
+        user.codingExperience === 'beginner' || user.codingExperience === 'advanced'
+          ? user.codingExperience
+          : 'intermediate'
+      );
+      setSelectedSubjects(user.subjects?.length ? user.subjects : CORE_SUBJECTS);
+      setLearningInterestsText((user.learningInterests || ['Algorithms', 'Systems', 'AI']).join(', '));
+      setCareerInterestsText((user.careerInterests || [user.dreamRole || 'Software Engineering']).filter(Boolean).join(', '));
+      if (user.syllabusCustomText && !syllabusText) {
+        setSyllabusText(user.syllabusCustomText);
+      }
     }
-    fetchHealth();
+    void fetchDiagnostics();
   }, [user]);
 
-  const fetchHealth = async () => {
+  const fetchDiagnostics = async () => {
     setIsDiagnosing(true);
     try {
-      const data = await api.getSystemHealth();
+      const data = await api.getSystemDiagnostics();
       setHealthData(data);
     } finally {
       setIsDiagnosing(false);
     }
   };
 
+  const toggleSubject = (sub: string) => {
+    setSelectedSubjects(prev =>
+      prev.includes(sub) ? prev.filter(s => s !== sub) : [...prev, sub]
+    );
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingProfile(true);
+    setProfileNotice('');
     try {
+      const learningInterests = learningInterestsText.split(',').map(s => s.trim()).filter(Boolean);
+      const careerInterests = careerInterestsText.split(',').map(s => s.trim()).filter(Boolean);
       const updated = await api.updateProfile({
-        name,
-        university,
-        major,
+        name: name.trim(),
+        university: university.trim(),
+        degree: degree.trim(),
+        branch: branch.trim(),
+        major: `${degree.trim()} ${branch.trim()}`.trim(),
         semester: Number(semester),
+        currentGpa: Number(currentGpa),
         targetGpa: Number(targetGpa),
-        dreamRole
+        dreamRole: dreamRole.trim(),
+        codingExperience,
+        subjects: selectedSubjects,
+        learningInterests,
+        careerInterests,
+        onboardingComplete: true
       });
       setUser(updated);
-      alert('✅ Profile updated successfully!');
+      setProfileNotice('Academic profile saved and synced!');
+      setTimeout(() => setProfileNotice(''), 4000);
     } finally {
       setIsSavingProfile(false);
     }
   };
 
-  const handleSaveSyllabus = () => {
+  const handleSaveSyllabus = async () => {
     localStorage.setItem('learnos_syllabus_text', syllabusText.trim());
     localStorage.setItem('learnos_courses_text', coursesText.trim());
     localStorage.setItem('learnos_syllabus_file', syllabusFileName);
-    setSyllabusStatus('University syllabus saved. LearnOS will use it for tutoring.');
-    window.setTimeout(() => setSyllabusStatus(''), 3000);
+    const updated = await api.updateProfile({
+      syllabusCustomText: [syllabusText.trim(), coursesText.trim()].filter(Boolean).join('\n\n')
+    });
+    if (updated) setUser(updated);
+    setSyllabusStatus('University syllabus saved to your student profile. LearnOS will use it for tutoring.');
+    window.setTimeout(() => setSyllabusStatus(''), 4000);
   };
 
   const handleSyllabusFile = (file?: File) => {
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      setSyllabusStatus('Please select a PDF smaller than 5 MB.');
+      setSyllabusStatus('Please select a file smaller than 5 MB.');
       return;
     }
     setSyllabusFileName(file.name);
     localStorage.setItem('learnos_syllabus_file', file.name);
-    setSyllabusStatus('PDF selected. Paste its text below for full AI personalization.');
+    if (/\.(txt|md|json)$/i.test(file.name)) {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const text = ev.target?.result;
+        if (typeof text === 'string' && text.trim()) {
+          setSyllabusText(text);
+          setSyllabusStatus('Syllabus text extracted automatically. Click "Save syllabus" to persist.');
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      setSyllabusStatus('PDF selected. Paste its key units or topics below for AI personalization.');
+    }
   };
 
   return (
@@ -99,16 +164,16 @@ export const ProfileSettings: React.FC = () => {
             <h1 className="text-2xl font-extrabold text-[#F8FAFC]">Profile, Settings & Help</h1>
           </div>
           <p className="text-xs text-[#94A3B8] mt-1">
-            Student preferences, external API connections, system health audits, and documentation.
+            Academic profile customization, university syllabus, AI architecture status, and diagnostics.
           </p>
         </div>
 
         {/* View Tabs */}
-        <div className="flex items-center gap-2 bg-[#151923] p-1.5 rounded-xl border border-[#232936]">
+        <div className="flex flex-wrap items-center gap-1.5 bg-[#151923] p-1.5 rounded-xl border border-[#232936]">
           {[
             { id: 'profile', label: 'Student Profile', icon: User },
             { id: 'syllabus', label: 'University Syllabus', icon: BookOpen },
-            { id: 'ai', label: 'Local AI', icon: Sparkles },
+            { id: 'ai', label: 'AI Architecture', icon: Sparkles },
             { id: 'diagnostics', label: 'Diagnostics', icon: Activity },
             { id: 'help', label: 'User Guide', icon: HelpCircle },
           ].map(tab => {
@@ -136,11 +201,18 @@ export const ProfileSettings: React.FC = () => {
       {activeTab === 'profile' && (
         <div className="bg-[#151923] border border-[#232936] rounded-xl p-6 sm:p-8 space-y-6">
           <div className="pb-4 border-b border-[#232936]">
-            <h2 className="text-base font-bold text-[#F8FAFC]">Academic Profile Details</h2>
-            <p className="text-xs text-[#94A3B8] mt-0.5">Customize your student information and target career goals.</p>
+            <h2 className="text-base font-bold text-[#F8FAFC]">Academic & Career Profile</h2>
+            <p className="text-xs text-[#94A3B8] mt-0.5">Customize your university, degree, branch, semester, enrolled subjects, and career goals.</p>
           </div>
 
-          <form onSubmit={handleSaveProfile} className="space-y-4">
+          {profileNotice && (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300 flex items-center gap-2">
+              <CheckCircle2 size={15} />
+              <span>{profileNotice}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveProfile} className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-[#94A3B8]">Full Name</label>
@@ -154,11 +226,12 @@ export const ProfileSettings: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-[#94A3B8]">University / Institute</label>
+                <label className="text-xs font-medium text-[#94A3B8]">College / University</label>
                 <input
                   type="text"
                   value={university}
                   onChange={(e) => setUniversity(e.target.value)}
+                  placeholder="E.g., Indian Institute of Technology / NIT / VTU"
                   className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
                 />
               </div>
@@ -166,11 +239,23 @@ export const ProfileSettings: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="text-xs font-medium text-[#94A3B8]">Major / Discipline</label>
+                <label className="text-xs font-medium text-[#94A3B8]">Degree</label>
                 <input
                   type="text"
-                  value={major}
-                  onChange={(e) => setMajor(e.target.value)}
+                  value={degree}
+                  onChange={(e) => setDegree(e.target.value)}
+                  placeholder="B.Tech / B.E. / B.Sc."
+                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[#94A3B8]">Branch / Specialization</label>
+                <input
+                  type="text"
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  placeholder="Computer Science & Engineering"
                   className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
                 />
               </div>
@@ -182,7 +267,22 @@ export const ProfileSettings: React.FC = () => {
                   min={1}
                   max={8}
                   value={semester}
-                  onChange={(e) => setSemester(parseInt(e.target.value))}
+                  onChange={(e) => setSemester(parseInt(e.target.value) || 1)}
+                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs font-medium text-[#94A3B8]">Current CGPA</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  max={10}
+                  value={currentGpa}
+                  onChange={(e) => setCurrentGpa(parseFloat(e.target.value) || 0)}
                   className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
                 />
               </div>
@@ -195,21 +295,81 @@ export const ProfileSettings: React.FC = () => {
                   min={0}
                   max={10}
                   value={targetGpa}
-                  onChange={(e) => setTargetGpa(parseFloat(e.target.value))}
+                  onChange={(e) => setTargetGpa(parseFloat(e.target.value) || 0)}
                   className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[#94A3B8]">Coding Experience</label>
+                <select
+                  value={codingExperience}
+                  onChange={(e) => setCodingExperience(e.target.value as any)}
+                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-medium text-[#94A3B8]">Dream Career Goal / Target Role</label>
-              <input
-                type="text"
-                value={dreamRole}
-                onChange={(e) => setDreamRole(e.target.value)}
-                placeholder="E.g., Full-Stack AI Engineer, Distributed Systems Architect"
-                className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
-              />
+              <label className="text-xs font-medium text-[#94A3B8] block mb-2">Enrolled Subjects</label>
+              <div className="flex flex-wrap gap-2">
+                {CORE_SUBJECTS.map(sub => {
+                  const active = selectedSubjects.includes(sub);
+                  return (
+                    <button
+                      key={sub}
+                      type="button"
+                      onClick={() => toggleSubject(sub)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                        active
+                          ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 font-semibold'
+                          : 'bg-[#0B0D12] border-[#232936] text-[#94A3B8] hover:text-white'
+                      }`}
+                    >
+                      {sub}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs font-medium text-[#94A3B8]">Dream Career Role</label>
+                <input
+                  type="text"
+                  value={dreamRole}
+                  onChange={(e) => setDreamRole(e.target.value)}
+                  placeholder="E.g., Full-Stack AI Engineer"
+                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[#94A3B8]">Learning Interests (comma-separated)</label>
+                <input
+                  type="text"
+                  value={learningInterestsText}
+                  onChange={(e) => setLearningInterestsText(e.target.value)}
+                  placeholder="Algorithms, Operating Systems, Deep Learning"
+                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[#94A3B8]">Career Interests (comma-separated)</label>
+                <input
+                  type="text"
+                  value={careerInterestsText}
+                  onChange={(e) => setCareerInterestsText(e.target.value)}
+                  placeholder="Backend Systems, AI Engineering, Cloud"
+                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
+                />
+              </div>
             </div>
 
             <div className="pt-4 border-t border-[#232936] flex justify-end">
@@ -226,21 +386,21 @@ export const ProfileSettings: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: API KEYS & CLOUD SERVICES */}
+      {/* TAB 2: UNIVERSITY SYLLABUS */}
       {activeTab === 'syllabus' && (
         <div className="bg-[#151923] border border-[#232936] rounded-xl p-6 sm:p-8 space-y-5">
           <div>
-            <h2 className="text-base font-bold text-[#F8FAFC]">University Syllabus</h2>
+            <h2 className="text-base font-bold text-[#F8FAFC]">University Syllabus Customization</h2>
             <p className="text-xs text-[#94A3B8] mt-1">
-              Add your syllabus through any available method. LearnOS will use it to personalize study topics and explanations.
+              LearnOS ships with 6 complete CS subjects out-of-the-box. You can optionally upload or paste your university's custom syllabus below so the AI Tutor tailors explanations to your exact curriculum.
             </p>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-[#94A3B8]">1. Upload syllabus PDF</label>
+            <label className="text-xs font-medium text-[#94A3B8]">1. Upload syllabus file (.txt, .md, .json, or .pdf)</label>
             <input
               type="file"
-              accept=".pdf,application/pdf"
+              accept=".txt,.md,.json,.pdf,text/plain,text/markdown,application/json,application/pdf"
               onChange={(e) => handleSyllabusFile(e.target.files?.[0])}
               className="mt-1 block w-full text-xs text-[#94A3B8] file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:text-white"
             />
@@ -248,7 +408,7 @@ export const ProfileSettings: React.FC = () => {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-[#94A3B8]">2. Paste syllabus text</label>
+            <label className="text-xs font-medium text-[#94A3B8]">2. Paste syllabus units & learning outcomes</label>
             <textarea
               rows={8}
               value={syllabusText}
@@ -261,10 +421,10 @@ export const ProfileSettings: React.FC = () => {
           <div>
             <label className="text-xs font-medium text-[#94A3B8]">3. Enter courses and semester</label>
             <textarea
-              rows={5}
+              rows={4}
               value={coursesText}
               onChange={(e) => setCoursesText(e.target.value)}
-              placeholder={"Semester 5: Database Management Systems\nSemester 5: Computer Networks\nSemester 5: Full Stack Development"}
+              placeholder={"Semester 5: Database Management Systems\nSemester 5: Computer Networks\nSemester 5: Operating Systems"}
               className="mt-1 w-full rounded-lg border border-[#232936] bg-[#0B0D12] px-3 py-2 text-xs text-[#F8FAFC] focus:border-indigo-500 focus:outline-none"
             />
           </div>
@@ -276,104 +436,70 @@ export const ProfileSettings: React.FC = () => {
           )}
 
           <div className="flex justify-end border-t border-[#232936] pt-4">
-            <button onClick={handleSaveSyllabus} className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white">
+            <button onClick={() => void handleSaveSyllabus()} className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white">
               <Save size={14} /> Save syllabus
             </button>
           </div>
         </div>
       )}
 
+      {/* TAB 3: AI ARCHITECTURE */}
       {activeTab === 'ai' && (
         <div className="bg-[#151923] border border-[#232936] rounded-xl p-6 sm:p-8 space-y-6">
           <div className="pb-4 border-b border-[#232936]">
-            <h2 className="text-base font-bold text-[#F8FAFC]">Local AI Setup</h2>
+            <h2 className="text-base font-bold text-[#F8FAFC]">Centralized AI Architecture</h2>
             <p className="text-xs text-[#94A3B8] mt-0.5">
-              LearnOS runs its open-weight model in-process with llama.cpp. No AI account, API key, or separate AI application is needed.
+              LearnOS manages AI inference centrally on the backend so students never need to configure personal API keys or install multi-gigabyte models on their devices.
             </p>
           </div>
 
           <div className="rounded-lg border border-[#232936] bg-[#0B0D12] p-4">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold text-[#F8FAFC]">AI provider status</span>
-              <Badge variant={healthData?.services?.aiEngine?.isReady ? 'success' : 'warning'} size="sm">
-                {healthData?.services?.aiEngine?.provider || 'Status unavailable'}
+              <span className="text-xs font-semibold text-[#F8FAFC]">Active AI Provider</span>
+              <Badge variant="success" size="sm">
+                {healthData?.services?.aiEngine?.provider || 'LearnOS Built-in Academic Engine'}
               </Badge>
             </div>
             <p className="mt-2 text-xs text-[#94A3B8]">
-              {healthData?.services?.aiEngine?.isReady
-                ? 'The local model is loaded and ready for offline inference.'
-                : healthData?.services?.aiEngine?.error || 'The LearnOS model or local runtime is unavailable.'}
+              {healthData?.services?.aiEngine?.note ||
+                'Ready for College Tutor explanations, Note Summarization, MCQ Generation, Code Review, and Mock Interviews.'}
             </p>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-[#94A3B8] flex items-center gap-1.5">
-                <Sparkles size={13} className="text-indigo-400" />
-                <span>One-time model setup</span>
-              </label>
-              <ol className="mt-2 list-inside list-decimal space-y-1.5 text-xs leading-relaxed text-[#94A3B8]">
-                <li>Install LearnOS server dependencies with <code className="text-indigo-300">npm ci</code>; the llama.cpp runtime is included.</li>
-                <li>From the LearnOS project folder, run <code className="text-indigo-300">npm run setup:model</code> once to download and verify the 1.83 GB model.</li>
-                <li>Restart the LearnOS server. The verified model is stored outside the repository and inference works offline after setup.</li>
-              </ol>
-              <span className="text-[11px] text-[#94A3B8]/70 mt-1 block">
-                Qwen3-1.7B Q8_0 (Apache-2.0): 8 GB RAM minimum, 16 GB recommended. For web hosting, run setup on the inference server; students need only a browser.
-              </span>
+          <div className="space-y-3 text-xs text-[#94A3B8] leading-relaxed">
+            <div className="font-semibold text-[#F8FAFC] flex items-center gap-1.5">
+              <Sparkles size={14} className="text-indigo-400" />
+              <span>Operator Backend Configuration (Render / Self-Hosted)</span>
             </div>
+            <p>
+              Platform operators can configure remote inference on the Render backend using environment variables (<code className="text-indigo-300">GEMINI_API_KEY</code>, <code className="text-indigo-300">GROQ_API_KEY</code>, <code className="text-indigo-300">OPENROUTER_API_KEY</code>, or <code className="text-indigo-300">OPENAI_API_KEY</code>). When no external key is set, LearnOS automatically serves responses using its curriculum-grounded Academic AI Fallback Engine.
+            </p>
+          </div>
 
-            <div className="hidden">
-              <div>
-                <label className="text-xs font-medium text-[#94A3B8] flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-emerald-400" />
-                  <span>Supabase Project URL</span>
-                </label>
-                <input
-                  type="text"
-                  value=""
-                  readOnly
-                  placeholder="https://xyz.supabase.co"
-                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] font-mono focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-[#94A3B8]">Supabase Anon Key</label>
-                <input
-                  type="password"
-                  value=""
-                  readOnly
-                  placeholder="eyJhbGciOi..."
-                  className="mt-1 w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-2 text-xs text-[#F8FAFC] font-mono focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-[#232936] flex justify-end">
-              <button
-                type="button"
-                onClick={fetchHealth}
-                disabled={isDiagnosing}
-                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 disabled:opacity-50"
-              >
-                {isDiagnosing ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
-                Check local model
-              </button>
-            </div>
+          <div className="pt-4 border-t border-[#232936] flex justify-end">
+            <button
+              type="button"
+              onClick={() => void fetchDiagnostics()}
+              disabled={isDiagnosing}
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 disabled:opacity-50"
+            >
+              {isDiagnosing ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
+              Refresh AI Status
+            </button>
           </div>
         </div>
       )}
 
-      {/* TAB 3: DIAGNOSTICS & SYSTEM AUDIT */}
+      {/* TAB 4: DIAGNOSTICS & SYSTEM AUDIT */}
       {activeTab === 'diagnostics' && (
         <div className="bg-[#151923] border border-[#232936] rounded-xl p-6 sm:p-8 space-y-6">
           <div className="flex items-center justify-between pb-4 border-b border-[#232936]">
             <div>
               <h2 className="text-base font-bold text-[#F8FAFC]">System Health & Diagnostics Audit</h2>
-              <p className="text-xs text-[#94A3B8] mt-0.5">Live status verification across all platform micro-subsystems.</p>
+              <p className="text-xs text-[#94A3B8] mt-0.5">Live status verification across all platform subsystems.</p>
             </div>
             <button
-              onClick={fetchHealth}
+              onClick={() => void fetchDiagnostics()}
               disabled={isDiagnosing}
               className="px-3 py-1.5 bg-[#0B0D12] hover:bg-[#1C2230] text-xs font-semibold text-[#F8FAFC] border border-[#232936] rounded-lg flex items-center gap-1.5"
             >
@@ -386,20 +512,20 @@ export const ProfileSettings: React.FC = () => {
             <div className="p-4 rounded-xl bg-[#0B0D12] border border-[#232936] space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-[#F8FAFC]">Backend REST API</span>
-                <Badge variant="success" size="sm">Online (Port 5000)</Badge>
+                <Badge variant="success" size="sm">{healthData?.status || 'Online'}</Badge>
               </div>
               <div className="text-[11px] text-[#94A3B8]">
-                Uptime: {healthData?.uptimeSeconds || 120}s • Latency: 12ms
+                Uptime: {healthData?.uptimeSeconds ?? 0}s • Version: {healthData?.version || '2.5.0'}
               </div>
             </div>
 
             <div className="p-4 rounded-xl bg-[#0B0D12] border border-[#232936] space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-[#F8FAFC]">Storage Persistence Engine</span>
-                <Badge variant="success" size="sm">Active (ACID-Ready)</Badge>
+                <Badge variant="success" size="sm">Active (Per-User Isolated)</Badge>
               </div>
               <div className="text-[11px] text-[#94A3B8]">
-                Disk sync with auto-seeding and transactional write-through.
+                {healthData?.services?.database || 'JSON Persistence Engine (Multi-User Isolated)'}
               </div>
             </div>
 
@@ -409,7 +535,7 @@ export const ProfileSettings: React.FC = () => {
                 <Badge variant="purple" size="sm">Ready</Badge>
               </div>
               <div className="text-[11px] text-[#94A3B8]">
-                Engine: {healthData?.services?.aiEngine?.provider || 'LearnOS Autonomous Academic AI'}
+                Engine: {healthData?.services?.aiEngine?.provider || 'LearnOS Built-in Academic Engine'}
               </div>
             </div>
 
@@ -419,40 +545,40 @@ export const ProfileSettings: React.FC = () => {
                 <Badge variant="success" size="sm">Sandboxed</Badge>
               </div>
               <div className="text-[11px] text-[#94A3B8]">
-                Engines: Piston Public API & Node.js Isolated VM (C, Python, JS).
+                {healthData?.services?.codeRunner?.note || 'Isolated Browser Worker & Piston Sandbox (JS, Python, C)'}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 4: USER GUIDE & FAQ */}
+      {/* TAB 5: USER GUIDE & FAQ */}
       {activeTab === 'help' && (
         <div className="bg-[#151923] border border-[#232936] rounded-xl p-6 sm:p-8 space-y-6">
           <div className="pb-4 border-b border-[#232936]">
             <h2 className="text-base font-bold text-[#F8FAFC]">LearnOS Comprehensive User Manual</h2>
-            <p className="text-xs text-[#94A3B8] mt-0.5">Quick guide to all 10 autonomous modules.</p>
+            <p className="text-xs text-[#94A3B8] mt-0.5">Quick guide to all platform modules.</p>
           </div>
 
           <div className="space-y-4 text-xs text-[#94A3B8] leading-relaxed">
             <div className="p-4 rounded-xl bg-[#0B0D12] border border-[#232936] space-y-1">
-              <h3 className="font-semibold text-[#F8FAFC]">1. College Tutor</h3>
-              <p>Navigate through Units 1-5 for 6 core CS subjects. Use the AI Learning Co-Pilot for Feynman analogies, code samples, and Socratic quizzes.</p>
+              <h3 className="font-semibold text-[#F8FAFC]">1. College Tutor & Syllabus</h3>
+              <p>Explore 6 core CS subjects across unit-by-unit topics, subtopics, learning objectives, practice questions, and revision resources. Ask the context-aware AI Tutor for Feynman analogies, Socratic questions, or code examples, or add custom university topics.</p>
             </div>
 
             <div className="p-4 rounded-xl bg-[#0B0D12] border border-[#232936] space-y-1">
               <h3 className="font-semibold text-[#F8FAFC]">2. Study Planner & Pomodoro</h3>
-              <p>Organize study sprints with Kanban boards. Click "Pomodoro Timer" and toggle the Web Audio ambient sound synthesizer for noise-free focus.</p>
+              <p>Organize study sprints with Kanban boards, manage your weekly class timetable, track SuperMemo spaced repetition reviews, and run Pomodoro focus sessions with synthesized ambient audio.</p>
             </div>
 
             <div className="p-4 rounded-xl bg-[#0B0D12] border border-[#232936] space-y-1">
               <h3 className="font-semibold text-[#F8FAFC]">3. Coding Lab</h3>
-              <p>Select problems like Two Sum, choose C, Python, or JavaScript, and press "Run Code" or "Submit Solution" to run against automated hidden test cases.</p>
+              <p>Select problems like Two Sum, Valid Parentheses, or Binary Search, write solutions in JavaScript, Python, or C, save your code, and run or submit against automated test cases.</p>
             </div>
 
             <div className="p-4 rounded-xl bg-[#0B0D12] border border-[#232936] space-y-1">
-              <h3 className="font-semibold text-[#F8FAFC]">4. AI Mock Interview</h3>
-              <p>Select your dream role in Skill Development and answer technical scenario questions. The AI scores your communication, technical accuracy, and trade-off analysis.</p>
+              <h3 className="font-semibold text-[#F8FAFC]">4. Skill Development & AI Mock Interview</h3>
+              <p>Follow structured career roadmaps with prerequisite tracking and practice role-specific technical interviews with instant rubric scoring.</p>
             </div>
           </div>
         </div>

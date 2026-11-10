@@ -1,72 +1,125 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { db } from '../db/db.js';
+import { AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-// Tasks
-router.get('/tasks', (req: Request, res: Response) => {
-  res.json({ success: true, tasks: db.getTasks() });
+// Get all tasks
+router.get('/tasks', (req: AuthRequest, res: Response) => {
+  res.json({ success: true, tasks: db.getTasks(req.auth?.userId) });
 });
 
-router.post('/tasks', (req: Request, res: Response) => {
-  const { title, subjectName, dueDate, priority, status, category } = req.body;
-  if (!title || !dueDate) {
-    return res.status(400).json({ success: false, error: 'Title and Due Date are required' });
+// Create a new task
+router.post('/tasks', (req: AuthRequest, res: Response) => {
+  const { title, subjectId, subjectName, dueDate, priority, category } = req.body || {};
+  if (typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ success: false, error: 'Task title is required.' });
   }
-  const task = db.createTask({
-    title,
-    subjectName: subjectName || 'General',
-    dueDate,
-    priority: priority || 'medium',
-    status: status || 'todo',
-    category: category || 'assignment'
-  });
-  res.status(201).json({ success: true, task });
+  const newTask = db.createTask(
+    {
+      title: title.trim(),
+      subjectId,
+      subjectName: subjectName || 'General Study',
+      dueDate: dueDate || new Date().toISOString().split('T')[0],
+      priority: priority || 'medium',
+      status: 'todo',
+      category: category || 'reading'
+    },
+    req.auth?.userId
+  );
+  res.status(201).json({ success: true, task: newTask });
 });
 
-router.put('/tasks/:id', (req: Request, res: Response) => {
-  const task = db.updateTask(req.params.id, req.body);
-  if (!task) return res.status(404).json({ success: false, error: 'Task not found' });
-  res.json({ success: true, task });
+// Update task (status, title, priority, dueDate, category, subjectName)
+function handleUpdateTask(req: AuthRequest, res: Response) {
+  const updated = db.updateTask(req.params.id, req.body || {}, req.auth?.userId);
+  if (!updated) {
+    return res.status(404).json({ success: false, error: 'Task not found' });
+  }
+  return res.json({ success: true, task: updated });
+}
+
+router.patch('/tasks/:id', handleUpdateTask);
+router.put('/tasks/:id', handleUpdateTask);
+
+// Delete task
+router.delete('/tasks/:id', (req: AuthRequest, res: Response) => {
+  const deleted = db.deleteTask(req.params.id, req.auth?.userId);
+  if (!deleted) {
+    return res.status(404).json({ success: false, error: 'Task not found' });
+  }
+  res.json({ success: true });
 });
 
-router.delete('/tasks/:id', (req: Request, res: Response) => {
-  const deleted = db.deleteTask(req.params.id);
-  res.json({ success: deleted });
+// Timetable Schedules (support both /schedule and /schedules)
+router.get('/schedule', (req: AuthRequest, res: Response) => {
+  res.json({ success: true, schedules: db.getSchedules(req.auth?.userId) });
+});
+router.get('/schedules', (req: AuthRequest, res: Response) => {
+  res.json({ success: true, schedules: db.getSchedules(req.auth?.userId) });
 });
 
-// Timetable Schedules
-router.get('/schedules', (req: Request, res: Response) => {
-  res.json({ success: true, schedules: db.getSchedules() });
-});
+function handleCreateSchedule(req: AuthRequest, res: Response) {
+  const { dayOfWeek, startTime, endTime, title, subject, location, type } = req.body || {};
+  if (typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ success: false, error: 'Schedule slot title is required.' });
+  }
+  const newSchedule = db.createSchedule(
+    {
+      dayOfWeek: Number(dayOfWeek) || 1,
+      startTime: startTime || '09:00',
+      endTime: endTime || '10:00',
+      title: title.trim(),
+      subject: subject || 'Computer Science',
+      location: location || 'Study Desk',
+      type: type || 'self_study'
+    },
+    req.auth?.userId
+  );
+  return res.status(201).json({ success: true, schedule: newSchedule });
+}
 
-router.post('/schedules', (req: Request, res: Response) => {
-  const sch = db.createSchedule(req.body);
-  res.status(201).json({ success: true, schedule: sch });
-});
+router.post('/schedule', handleCreateSchedule);
+router.post('/schedules', handleCreateSchedule);
 
-router.delete('/schedules/:id', (req: Request, res: Response) => {
-  const deleted = db.deleteSchedule(req.params.id);
-  res.json({ success: deleted });
-});
+function handleDeleteSchedule(req: AuthRequest, res: Response) {
+  const deleted = db.deleteSchedule(req.params.id, req.auth?.userId);
+  if (!deleted) {
+    return res.status(404).json({ success: false, error: 'Schedule item not found' });
+  }
+  return res.json({ success: true });
+}
+
+router.delete('/schedule/:id', handleDeleteSchedule);
+router.delete('/schedules/:id', handleDeleteSchedule);
 
 // Spaced Repetition Revisions
-router.get('/revisions', (req: Request, res: Response) => {
-  res.json({ success: true, revisions: db.getRevisions() });
+router.get('/revisions', (req: AuthRequest, res: Response) => {
+  res.json({ success: true, revisions: db.getRevisions(req.auth?.userId) });
 });
 
-router.post('/revisions/:id/advance', (req: Request, res: Response) => {
-  const updated = db.advanceRevision(req.params.id);
-  if (!updated) return res.status(404).json({ success: false, error: 'Revision item not found' });
-  res.json({ success: true, revision: updated });
+function handleCompleteRevision(req: AuthRequest, res: Response) {
+  const rev = db.completeRevision(req.params.id, req.auth?.userId);
+  if (!rev) {
+    return res.status(404).json({ success: false, error: 'Revision item not found' });
+  }
+  return res.json({ success: true, revision: rev });
+}
+
+router.post('/revisions/:id/complete', handleCompleteRevision);
+router.post('/revisions/:id/advance', handleCompleteRevision);
+
+// Study Sessions & Pomodoro
+router.get('/sessions', (req: AuthRequest, res: Response) => {
+  res.json({ success: true, sessions: db.getStudySessions(req.auth?.userId) });
 });
 
-// Pomodoro session completion logger
-router.post('/pomodoro/complete', (req: Request, res: Response) => {
-  const user = db.getUser();
-  const updatedHours = Number((user.totalStudyHours + 0.42).toFixed(1)); // ~25 min = 0.42 hrs
-  db.updateUser({ totalStudyHours: updatedHours });
-  res.json({ success: true, message: 'Pomodoro session recorded', totalStudyHours: updatedHours });
+router.post('/pomodoro/complete', (req: AuthRequest, res: Response) => {
+  const minutes = Math.max(1, Math.min(240, Number(req.body?.minutes) || 25));
+  const mode = req.body?.mode || 'focus';
+  const subject = typeof req.body?.subject === 'string' ? req.body.subject : undefined;
+  const { user, session } = db.logStudySession(minutes, mode, subject, req.auth?.userId);
+  res.json({ success: true, user, totalStudyHours: user.totalStudyHours, session });
 });
 
 export default router;

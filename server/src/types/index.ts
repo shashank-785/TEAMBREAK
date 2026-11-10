@@ -3,8 +3,16 @@ export interface User {
   name: string;
   email: string;
   university: string;
+  degree?: string;
+  branch?: string;
   major: string;
   semester: number;
+  subjects?: string[];
+  learningInterests?: string[];
+  careerInterests?: string[];
+  codingExperience?: string;
+  syllabusCustomText?: string;
+  onboardingComplete?: boolean;
   targetGpa: number;
   currentGpa: number;
   streakDays: number;
@@ -14,6 +22,12 @@ export interface User {
   dreamRole: string;
   avatarUrl: string;
   createdAt: string;
+  preferences?: {
+    dailyGoalHours?: number;
+    preferredTutorStyle?: 'feynman' | 'socratic' | 'code' | 'analogy';
+    examAlertDays?: number;
+    universityBoard?: string;
+  };
 }
 
 export interface Subject {
@@ -35,13 +49,29 @@ export interface Unit {
   topics: Topic[];
 }
 
+export interface PracticeQuestionItem {
+  question: string;
+  hint?: string;
+  answer: string;
+}
+
+export interface RevisionResourceItem {
+  title: string;
+  type: 'formula' | 'summary' | 'cheatsheet' | 'reference';
+  summary: string;
+}
+
 export interface Topic {
   id: string;
   title: string;
   estimatedMinutes: number;
   content: string;
   keyPoints: string[];
+  subtopics?: string[];
+  learningObjectives?: string[];
   codeExamples?: { language: string; code: string }[];
+  practiceQuestions?: PracticeQuestionItem[];
+  revisionResources?: RevisionResourceItem[];
   isCompleted?: boolean;
 }
 
@@ -200,4 +230,31 @@ export interface Achievement {
   maxProgress: number;
   unlocked: boolean;
   unlockedAt?: string;
+}
+
+export interface QuizAttempt {
+  id: string;
+  subject: string;
+  score: number;
+  totalQuestions: number;
+  accuracy: number;
+  durationSeconds?: number;
+  examTitle?: string;
+  createdAt: string;
+}
+
+export interface StudySession {
+  id: string;
+  minutes: number;
+  subject?: string;
+  mode: 'focus' | 'revision' | 'coding' | 'exam';
+  createdAt: string;
+}
+
+export interface SavedCodeRecord {
+  problemId: string;
+  language: string;
+  code: string;
+  updatedAt: string;
+  solved?: boolean;
 }

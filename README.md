@@ -4,13 +4,16 @@
 [![Platform](https://img.shields.io/badge/platform-React%2018%20%7C%20Vite%20%7C%20Node.js%20%7C%20Express-indigo.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
 
-LearnOS is a student learning and career development workspace built with React, TypeScript, Vite, Node.js, and Express. Its AI tutor uses an open-weight model through an in-process llama.cpp runtime; it does not call an external inference API.
+LearnOS is a full-stack student learning and career development platform built with React 18, TypeScript, Vite, Tailwind CSS, Node.js, and Express.
+
+- **Live Frontend (GitHub Pages)**: [https://shashank-785.github.io/TEAMBREAK/](https://shashank-785.github.io/TEAMBREAK/)
+- **Production Backend API (Render)**: [https://learnos-backend-ks49.onrender.com/](https://learnos-backend-ks49.onrender.com/)
 
 ---
 
 ## 🎨 Design System
 
-Engineered with high contrast, modern dark ergonomics:
+Engineered with high-contrast, modern dark ergonomics:
 
 | Element | Color Hex | Visual Description |
 | :--- | :--- | :--- |
@@ -27,7 +30,7 @@ Engineered with high contrast, modern dark ergonomics:
 
 ## 🏛️ Autonomous Agent Roles
 
-The application was engineered with 6 isolated agent responsibilities:
+The application is engineered across 6 modular domains:
 
 | Agent | Isolated Responsibility | Modules Implemented |
 | :--- | :--- | :--- |
@@ -35,44 +38,60 @@ The application was engineered with 6 isolated agent responsibilities:
 | **NOVA** | Academic Core & Documents | College Tutor (2), Notes & Documents (4), Exam Centre (5) |
 | **ORBIT** | Productivity & Study Cycles | Study Planner (3), Timetable Grid, Spaced Repetition, Pomodoro Timer |
 | **FORGE** | Coding & Career Development | Coding Lab (6), Sandbox Execution, Skill Trees (7), AI Mock Interview |
-| **KERNEL** | Backend, Database & AI Core | Express API, single-user JSON persistence, local llama.cpp inference |
-| **SENTINEL** | Security, Testing & Health | Test Harness (`api.test.ts`), Health Probes, Package Validator |
+| **KERNEL** | Backend, Database & AI Core | Express API, multi-user isolated persistence, centralized multi-provider AI engine |
+| **SENTINEL** | Security, Testing & Health | E2E Test Harness (`api.test.ts` & `frontend.test.mjs`), Public/Protected Health Probes |
 
 ---
 
 ## 📦 Project Modules
 
-1. **Dashboard (ATLAS)**: Real-time GPA tracker, study hours, problem statistics, today's schedule, AI focus recommendations, and subject mastery meters.
-2. **College Tutor (NOVA)**: 6 university core subjects (DSA, OS, DBMS, Networks, Math, AI), Unit 1-5 syllabus trees, and interactive Socratic AI tutor (Feynman explanations, code samples, analogies).
-3. **Study Planner (ORBIT)**: Weekly class timetable, Kanban task sprint board, SuperMemo SM-2 spaced repetition queue, and Pomodoro focus timer with Web Audio ambient noise synthesizer.
-4. **Notes & Documents (NOVA)**: Markdown note manager with Exam Prep, Interview Prep, and custom folders, text/Markdown/JSON imports, one-click AI study summarizer, and AI-generated MCQs.
-5. **Exam Centre (NOVA)**: Adaptive quizzes with timer, 3D flip card flashcards, timed mock exam mode, and 2021-2025 university PYQ bank with model solutions.
-6. **Coding Lab (FORGE)**: Multi-language IDE that discovers every runtime installed on the configured Piston sandbox, curated problem library (Two Sum, Valid Parentheses, Reverse List), and AI code assistant.
-7. **Skill Development (FORGE)**: Visual career roadmaps (Full-Stack AI, ML Specialist), prerequisite skill trees, and interactive AI Technical Mock Interview Simulator with rubric scoring.
-8. **AI Assistant (ATLAS/KERNEL)**: Centralized academic and career chatbot with pre-built prompt templates (Resume review, Bug trace, 7-day study plan, Math solver).
-9. **Analytics (ATLAS/SENTINEL)**: Weekly study distribution charts, problem difficulty breakdown, 30-day activity streak calendar, and 6+ unlockable gamification badges.
-10. **Profile, Settings & Help (ATLAS/KERNEL)**: Student profile customizer, AI provider status and setup guidance, live system diagnostics audit, and comprehensive documentation manual.
+1. **Dashboard (ATLAS)**: Real-time GPA tracker, study hours, coding problem statistics, today's schedule, real upcoming tasks, recent activity feed, and subject mastery meters.
+2. **College Tutor & Syllabus (NOVA)**: 6 core Computer Science subjects (`CS301` Data Structures & Algorithms, `CS302` Operating Systems, `CS303` Database Management Systems, `CS304` Computer Networks, `MA301` Discrete Mathematics, `CS305` Artificial Intelligence & Machine Learning), unit-by-unit syllabus trees, subtopics, learning objectives, practice questions, revision resources, custom university topic support, and a multi-turn context-aware AI tutor (Feynman, Socratic, Code Example, and Analogy modes).
+3. **Study Planner (ORBIT)**: Weekly class timetable (add/delete blocks), Kanban task sprint board (create/edit/move/delete), SuperMemo SM-2 spaced repetition queue, and Pomodoro focus timer with Web Audio ambient synthesizer.
+4. **Notes & Documents (NOVA)**: Markdown note manager with folder organization (`Exam Prep`, `Interview Prep`, `Lecture Notes`, `Quick Revision`), `.txt`/`.md`/`.json` document upload, one-click AI study summarizer, and AI-generated MCQs & flashcards saved directly to Exam Centre.
+5. **Exam Centre (NOVA)**: Subject-filtered quizzes with score history persistence, 3D flip flashcards with custom flashcard creation, timed mock exams, and 2021–2025 university PYQ bank with step-by-step model solutions.
+6. **Coding Lab (FORGE)**: Multi-language IDE (Python, JavaScript, C++, Java) backed by an isolated Piston execution sandbox (with safe client-side Web Worker JS/TS fallback), custom `stdin` input, persistent saved code per problem & language, test-case verifier, and AI coding mentor.
+7. **Skill Development (FORGE)**: Visual career roadmaps (Full-Stack AI Engineer, Machine Learning Specialist, Systems & Cloud Architect) with enforced prerequisite chains and an interactive AI Technical Mock Interview Simulator with rubric scoring.
+8. **AI Assistant (ATLAS/KERNEL)**: Centralized academic and career assistant with multi-conversation persistence, real-time SSE streaming, note/task context injection, and 1-click prompt templates.
+9. **Analytics & Achievements (ATLAS/SENTINEL)**: 100% real data-driven weekly study charts, problem difficulty breakdown, 30-day activity streak calendar, quiz accuracy tracking, and unlockable gamification badges.
+10. **Profile, Settings & Help (ATLAS/KERNEL)**: Full academic profile management (University, Degree, Branch, Semester, Enrolled Subjects, Learning & Career Interests), AI provider status & diagnostics, and operator documentation.
+
+---
+
+## 🧠 Centralized AI Architecture
+
+LearnOS implements a single, centralized backend AI architecture (`server/src/services/ai.ts`) so **students never need to install models or configure personal API keys**:
+
+1. **Remote Cloud Inference (Recommended for Render / Cloud Hosting)**:
+   - Supports **Google Gemini** (`GEMINI_API_KEY`), **Groq** (`GROQ_API_KEY`), **OpenRouter** (`OPENROUTER_API_KEY`), or any **OpenAI-compatible endpoint** (`OPENAI_API_KEY` / `AI_API_KEY` + `AI_BASE_URL`).
+   - Built-in request timeouts (`25s`), per-user rate limiting, and backend-only secret management.
+2. **Local Inference (`node-llama-cpp` GGUF or Ollama)**:
+   - Supports local embedded **Qwen3-1.7B Q8_0 GGUF** via `node-llama-cpp` (`npm run setup:model`) or local Ollama (`OLLAMA_BASE_URL`).
+3. **Structured Academic Fallback Engine**:
+   - If neither remote cloud credentials nor local GGUF weights are active, LearnOS automatically falls back to its built-in **Academic Curriculum Engine**, ensuring College Tutor explanations, Note Summarization, MCQ/Flashcard generation, Mock Interview evaluations, and AI Assistant responses remain 100% functional without errors.
 
 ---
 
 ## 🚀 Quick Start Guide
 
 ### Prerequisites
-- Node.js (v20.0.0 or higher)
-- npm (v9.0.0 or higher)
+- Node.js (`v20.0.0` or higher)
+- npm (`v9.0.0` or higher)
 
 ### Installation
 ```bash
-# Clone the repository and enter the directory
-cd learnos
-
-# Install the locked client and server dependencies
+# Install workspace dependencies (client + server)
 npm ci
 ```
 
-### Running Locally
-You can run both client and server simultaneously:
+### Environment Setup
+Copy `server/.env.example` to `server/.env` and generate a 32-byte `AUTH_SECRET`:
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+Optionally configure `GEMINI_API_KEY` or `GROQ_API_KEY` in `server/.env` for cloud AI inference, or run `npm run setup:model` to download the local 1.83 GB Qwen3-1.7B GGUF model.
 
+### Running Locally
 ```bash
 # Start Backend API (Port 5000)
 npm run dev:server
@@ -80,45 +99,26 @@ npm run dev:server
 # In a second terminal, start Vite Client (Port 5173)
 npm run dev:client
 ```
-- Open browser at: **`http://localhost:5173`**
-- Backend Health Check: **`http://localhost:5000/api/system/health`**
+- Frontend: `http://localhost:5173`
+- Public Health Check: `http://localhost:5000/api/system/health`
 
-### Coding language runtimes
-Code execution is unavailable unless an isolated execution service is configured. The current backend can use a Piston-compatible endpoint via `PISTON_API_URL`; the application does not execute submitted code in its own Node.js process. This optional integration still depends on a separate service and is not part of the self-contained AI runtime.
-
-### LearnOS local AI engine
-
-The backend runs [llama.cpp](https://github.com/ggml-org/llama.cpp) through the maintained [`node-llama-cpp`](https://github.com/withcatai/node-llama-cpp) Node integration. The default model is **Qwen3-1.7B Q8_0 GGUF** from [Qwen/Qwen3-1.7B-GGUF](https://huggingface.co/Qwen/Qwen3-1.7B-GGUF), licensed under **Apache-2.0**. Its model file is about **1.83 GB**. This compact model can answer common study questions, but it is not equivalent to a large hosted model and can make mistakes.
-
-The runtime package and platform binary are installed with the LearnOS server dependencies. Download the model once from the LearnOS project root:
-
+### Building & Testing for Production
 ```bash
-npm ci
-npm run setup:model
-```
-
-The setup process verifies the file size and SHA-256 checksum and stores the weights under `~/.learnos/models/` (outside the Git repository). After setup, inference runs locally and can work offline. No Ollama installation, account, or API key is required. Set `LEARNOS_MODEL_PATH` to use another absolute model path, or `LEARNOS_GPU=disabled` to force CPU-only inference (`auto` is the default GPU selection).
-
-**Hardware:** 8 GB system RAM minimum; 16 GB recommended. Allow at least 2 GB of disk space for the weights and additional free memory for the OS, model context, and application. CPU inference is supported; throughput depends on the CPU. The server serializes generation to bound memory use. For a self-hosted web deployment, install the model on the backend host; browser-only hosting such as GitHub Pages cannot run the API or model.
-
-For development, copy `server/.env.example` to `server/.env` and set `AUTH_SECRET` to a generated random value of at least 32 bytes (for example, `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`). The server refuses to start with a missing or example secret. The GitHub Pages frontend uses hash-based routes so refreshes work on static hosting. **Proceed as Demo Account** opens a browser-local demo profile; saved API data and AI still require the Express backend. The backend must include `https://shashank-785.github.io` in `CORS_ORIGINS`, and its host must have the verified model file and enough RAM for inference.
-
-### Building for Production
-```bash
-# Type check and build both client & server
-npm run build
-```
-
-### Running Test Suite
-```bash
-# Execute KERNEL & SENTINEL automated test harness
+# Run full backend E2E (12 suites) and frontend verification (4 suites)
 npm test
+
+# Type-check and build both client and server
+npm run build
+
+# Publish production client bundle to docs/ for GitHub Pages
+npm run publish:pages
 ```
 
 ---
 
-## 🔒 Security & Privacy
-- No AI provider API keys are used; prompts are processed by the configured local model on the LearnOS backend host.
-- Private account-data API routes require a signed session; the anonymous shared demo-token route has been removed.
-- Current storage remains a single-user JSON database, not production-grade multi-user persistence. Do not expose this version as a multi-user service until database ownership isolation and migrations are implemented.
-- Code execution requires a separately configured isolated execution service. LearnOS does not execute submitted code in its Express process.
+## 🔒 Security & Data Architecture
+- **Multi-User Per-Account Isolation**: Every registered student receives an isolated account partition (`subjects`, `tasks`, `schedules`, `revisions`, `notes`, `flashcards`, `quizAttempts`, `savedCode`, `roadmaps`, `conversations`, `interviews`, `studyHistory`, `achievements`).
+- **Protected `server/data/learnos.json`**: Pre-existing repository seed data in `server/data/learnos.json` is strictly preserved; runtime multi-user mutations are written atomically to `server/data/learnos.runtime.json` (or `LEARNOS_DATA_DIR`).
+- **Signed Session Tokens & Revocation**: `scrypt` password hashing with timing-safe comparison, HMAC-SHA256 signed session tokens, and server-side token revocation on logout.
+- **Public vs. Protected System Routes**: `/api/system/health` exposes only safe public readiness status; detailed internal diagnostics (`/api/system/diagnostics`) require authentication.
+- **Sandboxed Code Execution**: Student code is never executed inside the Express server process.

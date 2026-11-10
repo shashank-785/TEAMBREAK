@@ -98,42 +98,53 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   res.status(500).json({ success: false, error: err?.message || 'Internal Server Error' });
 });
 
-// Start Server
-const server = app.listen(PORT, () => {
-  console.log(`
+export { app };
+
+// Start Server unless imported in test mode
+if (process.env.NODE_ENV !== 'test') {
+  const server = app.listen(PORT, () => {
+    console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                      LEARNOS BACKEND SERVER                   ║
 ║   AI-Powered Student Learning & Career Development Platform   ║
 ╚═══════════════════════════════════════════════════════════════╝
   🚀 Server running on: http://localhost:${PORT}
   📡 API Health Check:  http://localhost:${PORT}/api/system/health
-  🤖 AI Engine:         Local llama.cpp runtime
-  💻 Sandboxed Runner:  ${process.env.PISTON_API_URL ? 'Configured isolated execution service' : 'Unavailable (no isolated execution service configured)'}
+  🤖 AI Engine:         Configurable Remote / Local / Fallback AI
+  💻 Sandboxed Runner:  ${process.env.PISTON_API_URL ? 'Configured isolated execution service' : 'Browser Sandbox / Safe Fallback Mode'}
   💾 Persistence:       Active
   `);
-  void aiService.initialize()
-    .catch(error => console.error('[AI] Local model initialization failed:', error))
-    .finally(async () => {
-      const aiStatus = await aiService.getStatus();
-      console.log(`[AI] ${aiStatus.isReady ? `Ready (${aiStatus.model})` : `Unavailable (${aiStatus.error})`}`);
-    });
-});
+    void aiService
+      .initialize()
+      .catch((error) => console.error('[AI] Initialization warning:', error))
+      .finally(async () => {
+        const aiStatus = await aiService.getStatus();
+        console.log(
+          `[AI] ${aiStatus.isReady ? `Ready (${aiStatus.provider} - ${aiStatus.model})` : `Fallback Active (${aiStatus.error})`}`
+        );
+      });
+  });
 
-async function shutdown(signal: string) {
-  console.log(`[Server] ${signal} received; stopping HTTP server and releasing AI resources.`);
-  server.close(async error => {
-    if (error) {
-      console.error('[Server] Failed to close HTTP server cleanly:', error);
-      process.exitCode = 1;
-    }
-    try {
-      await aiService.dispose();
-    } catch (disposeError) {
-      console.error('[AI] Failed to release local model resources:', disposeError);
-      process.exitCode = 1;
-    }
+  async function shutdown(signal: string) {
+    console.log(`[Server] ${signal} received; stopping HTTP server and releasing AI resources.`);
+    server.close(async (error) => {
+      if (error) {
+        console.error('[Server] Failed to close HTTP server cleanly:', error);
+        process.exitCode = 1;
+      }
+      try {
+        await aiService.dispose();
+      } catch (disposeError) {
+        console.error('[AI] Failed to release local model resources:', disposeError);
+        process.exitCode = 1;
+      }
+    });
+  }
+
+  process.once('SIGINT', () => {
+    void shutdown('SIGINT');
+  });
+  process.once('SIGTERM', () => {
+    void shutdown('SIGTERM');
   });
 }
-
-process.once('SIGINT', () => { void shutdown('SIGINT'); });
-process.once('SIGTERM', () => { void shutdown('SIGTERM'); });

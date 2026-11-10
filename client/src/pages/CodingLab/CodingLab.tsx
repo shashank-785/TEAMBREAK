@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { 
   Code2, Play, CheckCircle2, XCircle, Sparkles, 
-  Terminal, Bug, Zap, RotateCcw, Loader2, ChevronRight, Check 
+  Terminal, Bug, Zap, RotateCcw, Loader2, Save, ShieldAlert
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { api } from '../../services/api';
-import { CodingProblem } from '../../types';
+import { CodingProblem, User } from '../../types';
 import { Badge } from '../../components/Badge';
 
 export const CodingLab: React.FC = () => {
+  const outlet = useOutletContext<{ user?: User | null; setUser?: (u: User) => void }>() || {};
   const [problems, setProblems] = useState<CodingProblem[]>([]);
   const [selectedProblem, setSelectedProblem] = useState<CodingProblem | null>(null);
   const [runtimes, setRuntimes] = useState<{ language: string; version: string; aliases: string[] }[]>([]);
-  const [selectedRuntime, setSelectedRuntime] = useState('');
+  const [selectedRuntime, setSelectedRuntime] = useState('javascript@ES2023');
   const [isLoadingRuntimes, setIsLoadingRuntimes] = useState(true);
   const [code, setCode] = useState<string>('');
   const [customStdin, setCustomStdin] = useState<string>('');
+  const [saveNotice, setSaveNotice] = useState<string>('');
 
   // Execution & Test Results
   const [isExecuting, setIsExecuting] = useState(false);
@@ -42,20 +45,14 @@ export const CodingLab: React.FC = () => {
         api.getCodingProblemDetail(fetched[0].slug).then((detail) => {
           if (detail) {
             setSelectedProblem(detail);
-            setCode(detail.starterCode.javascript || '');
+            setCustomStdin(detail.sampleInput || '');
           }
         });
       }
     });
   }, []);
 
-  const runtimeLanguage = selectedRuntime.split('@')[0] || '';
-
-  useEffect(() => {
-    if (selectedRuntime && selectedProblem) {
-      setCode(getStarterCode(selectedRuntime, selectedProblem));
-    }
-  }, [selectedRuntime, selectedProblem]);
+  const runtimeLanguage = selectedRuntime.split('@')[0] || 'javascript';
 
   const getStarterCode = (runtimeId: string, problem: CodingProblem | null): string => {
     const languageName = runtimeId.split('@')[0].toLowerCase();
@@ -71,32 +68,34 @@ export const CodingLab: React.FC = () => {
       c: '#include <stdio.h>\n\nint main(void) {\n    printf("Hello, LearnOS!\\n");\n    return 0;\n}',
       'c++': '#include <iostream>\n\nint main() {\n    std::cout << "Hello, LearnOS!" << std::endl;\n    return 0;\n}',
       java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, LearnOS!");\n    }\n}',
-      go: 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello, LearnOS!")\n}',
-      rust: 'fn main() {\n    println!("Hello, LearnOS!");\n}',
-      ruby: 'puts "Hello, LearnOS!"',
-      php: '<?php\necho "Hello, LearnOS!";',
-      bash: 'echo "Hello, LearnOS!"',
-      sh: 'echo "Hello, LearnOS!"',
-      sql: '-- Write your SQL query here',
-      r: 'print("Hello, LearnOS!")',
-      lua: 'print("Hello, LearnOS!")',
-      perl: 'print "Hello, LearnOS!\\n";',
-      swift: 'print("Hello, LearnOS!")',
-      kotlin: 'fun main() {\n    println("Hello, LearnOS!")\n}',
-      csharp: 'using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, LearnOS!");\n    }\n}',
-      'c#': 'using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello, LearnOS!");\n    }\n}',
-      dart: 'void main() {\n  print("Hello, LearnOS!");\n}',
-      elixir: 'IO.puts("Hello, LearnOS!")',
-      haskell: 'main = putStrLn "Hello, LearnOS!"',
     };
     return templates[languageName] || '// Write your code here';
   };
+
+  // Load saved code or starter code when problem or language changes
+  useEffect(() => {
+    let active = true;
+    if (!selectedRuntime || !selectedProblem) return;
+    const lang = selectedRuntime.split('@')[0].toLowerCase();
+    api.getSavedCode().then(res => {
+      if (!active) return;
+      const keyBySlug = `${selectedProblem.slug}:${lang}`;
+      const keyById = `${selectedProblem.id}:${lang}`;
+      const savedRecord = res.savedCode?.[keyBySlug] || res.savedCode?.[keyById];
+      if (savedRecord?.code && savedRecord.code.trim()) {
+        setCode(savedRecord.code);
+      } else {
+        setCode(getStarterCode(selectedRuntime, selectedProblem));
+      }
+    });
+    return () => { active = false; };
+  }, [selectedRuntime, selectedProblem]);
 
   const handleSelectProblem = async (slug: string) => {
     const detail = await api.getCodingProblemDetail(slug);
     if (detail) {
       setSelectedProblem(detail);
-      setCode(getStarterCode(selectedRuntime, detail));
+      setCustomStdin(detail.sampleInput || '');
       setExecutionOutput(null);
       setTestEvaluation(null);
       setAiAnalysis(null);
@@ -105,7 +104,18 @@ export const CodingLab: React.FC = () => {
 
   const handleLanguageChange = (runtimeId: string) => {
     setSelectedRuntime(runtimeId);
-    setCode(getStarterCode(runtimeId, selectedProblem));
+  };
+
+  const handleSaveCode = async () => {
+    if (!selectedProblem) return;
+    await api.saveUserCode(selectedProblem.slug, runtimeLanguage.toLowerCase(), code);
+    setSaveNotice('Saved!');
+    setTimeout(() => setSaveNotice(''), 2500);
+  };
+
+  const handleResetStarterCode = () => {
+    if (!selectedProblem) return;
+    setCode(getStarterCode(selectedRuntime, selectedProblem));
   };
 
   const handleRunCode = async () => {
@@ -113,7 +123,11 @@ export const CodingLab: React.FC = () => {
     setIsExecuting(true);
     setTestEvaluation(null);
     try {
-      const result = await api.executeCode(selectedRuntime, code, customStdin);
+      if (selectedProblem) {
+        await api.saveUserCode(selectedProblem.slug, runtimeLanguage.toLowerCase(), code);
+      }
+      const stdinToUse = customStdin || selectedProblem?.sampleInput || '';
+      const result = await api.executeCode(selectedRuntime, code, stdinToUse);
       setExecutionOutput(result);
     } finally {
       setIsExecuting(false);
@@ -125,10 +139,15 @@ export const CodingLab: React.FC = () => {
     setIsExecuting(true);
     setExecutionOutput(null);
     try {
+      await api.saveUserCode(selectedProblem.slug, runtimeLanguage.toLowerCase(), code);
       const evaluation = await api.evaluateProblem(selectedProblem.slug, selectedRuntime, code);
       setTestEvaluation(evaluation);
       if (evaluation.allPassed) {
         confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+        if (outlet.user && outlet.setUser) {
+          const freshUser = await api.getMe().catch(() => null);
+          if (freshUser) outlet.setUser(freshUser);
+        }
       }
     } finally {
       setIsExecuting(false);
@@ -160,12 +179,12 @@ export const CodingLab: React.FC = () => {
             <h1 className="text-2xl font-extrabold text-[#F8FAFC]">Coding Lab & IDE</h1>
           </div>
           <p className="text-xs text-[#94A3B8] mt-1">
-            Run and test code in every language installed on your configured Piston sandbox.
+            Practice DSA problems in JavaScript, Python, or C with automated test cases and AI code review.
           </p>
         </div>
 
         {/* Language Selector & Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           <label className="sr-only" htmlFor="coding-language">Programming language</label>
           <select
             id="coding-language"
@@ -175,12 +194,28 @@ export const CodingLab: React.FC = () => {
             className="min-h-10 max-w-48 rounded-lg border border-[#232936] bg-[#151923] px-3 text-xs font-semibold text-[#F8FAFC] disabled:opacity-60"
           >
             {isLoadingRuntimes && <option value="">Loading languages…</option>}
-            {!isLoadingRuntimes && runtimes.length === 0 && <option value="">No runtimes available</option>}
             {runtimes.map(runtime => {
               const runtimeId = `${runtime.language}@${runtime.version}`;
-              return <option key={runtimeId} value={runtimeId}>{runtime.language} · {runtime.version}</option>;
+              return <option key={runtimeId} value={runtimeId}>{runtime.language.toUpperCase()} ({runtime.version})</option>;
             })}
           </select>
+
+          <button
+            onClick={handleSaveCode}
+            className="flex items-center gap-1.5 px-3 py-2 bg-[#151923] hover:bg-[#1C2230] text-[#94A3B8] hover:text-[#F8FAFC] border border-[#232936] rounded-lg text-xs font-semibold transition-all"
+            title="Save your code for this problem"
+          >
+            <Save size={13} className="text-indigo-400" />
+            <span>{saveNotice || 'Save'}</span>
+          </button>
+
+          <button
+            onClick={handleResetStarterCode}
+            className="p-2 bg-[#151923] hover:bg-[#1C2230] text-[#94A3B8] hover:text-[#F8FAFC] border border-[#232936] rounded-lg text-xs transition-all"
+            title="Reset to starter template"
+          >
+            <RotateCcw size={14} />
+          </button>
 
           <button
             onClick={handleRunCode}
@@ -201,12 +236,6 @@ export const CodingLab: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {runtimes.length === 0 && !isLoadingRuntimes && (
-        <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200">
-          No coding runtimes are available. Configure <code>PISTON_API_URL</code> on the LearnOS server and enable the desired languages in your Piston sandbox to populate this list.
-        </div>
-      )}
 
       {/* Main 2-Column IDE Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -276,13 +305,14 @@ export const CodingLab: React.FC = () => {
           <div className="bg-[#151923] border border-[#232936] rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs font-mono text-[#94A3B8] flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-              <span>Editor • {runtimeLanguage.toUpperCase() || 'Select a language'}</span>
+              <span>Editor • {runtimeLanguage.toUpperCase()}</span>
             </div>
 
             {/* AI Action Buttons */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 onClick={() => handleAskCodeAI('explain')}
+                disabled={isAiLoading}
                 className="px-2.5 py-1 bg-[#0B0D12] hover:bg-[#1C2230] text-[#94A3B8] hover:text-[#F8FAFC] border border-[#232936] rounded text-[11px] font-medium flex items-center gap-1"
               >
                 <Sparkles size={11} className="text-indigo-400" />
@@ -290,6 +320,7 @@ export const CodingLab: React.FC = () => {
               </button>
               <button
                 onClick={() => handleAskCodeAI('bugs')}
+                disabled={isAiLoading}
                 className="px-2.5 py-1 bg-[#0B0D12] hover:bg-[#1C2230] text-[#94A3B8] hover:text-[#F8FAFC] border border-[#232936] rounded text-[11px] font-medium flex items-center gap-1"
               >
                 <Bug size={11} className="text-rose-400" />
@@ -297,10 +328,19 @@ export const CodingLab: React.FC = () => {
               </button>
               <button
                 onClick={() => handleAskCodeAI('optimize')}
+                disabled={isAiLoading}
                 className="px-2.5 py-1 bg-[#0B0D12] hover:bg-[#1C2230] text-[#94A3B8] hover:text-[#F8FAFC] border border-[#232936] rounded text-[11px] font-medium flex items-center gap-1"
               >
                 <Zap size={11} className="text-amber-400" />
                 <span>Optimize</span>
+              </button>
+              <button
+                onClick={() => handleAskCodeAI('edge_cases')}
+                disabled={isAiLoading}
+                className="px-2.5 py-1 bg-[#0B0D12] hover:bg-[#1C2230] text-[#94A3B8] hover:text-[#F8FAFC] border border-[#232936] rounded text-[11px] font-medium flex items-center gap-1"
+              >
+                <ShieldAlert size={11} className="text-emerald-400" />
+                <span>Edge Cases</span>
               </button>
             </div>
           </div>
@@ -313,6 +353,20 @@ export const CodingLab: React.FC = () => {
               onChange={(e) => setCode(e.target.value)}
               className="w-full bg-[#0B0D12] border border-[#232936] rounded-xl p-4 font-mono text-xs sm:text-sm text-[#F8FAFC] leading-relaxed focus:outline-none focus:border-indigo-500 shadow-inner"
               spellCheck={false}
+            />
+          </div>
+
+          {/* Custom Stdin Input */}
+          <div className="bg-[#151923] border border-[#232936] rounded-xl p-3 space-y-1.5">
+            <label className="text-[11px] font-semibold text-[#94A3B8] block">
+              Custom Standard Input (stdin for Run Code)
+            </label>
+            <input
+              type="text"
+              value={customStdin}
+              onChange={e => setCustomStdin(e.target.value)}
+              placeholder="Enter custom test input..."
+              className="w-full bg-[#0B0D12] border border-[#232936] rounded-lg px-3 py-1.5 font-mono text-xs text-[#F8FAFC] focus:outline-none focus:border-indigo-500"
             />
           </div>
 
@@ -365,10 +419,10 @@ export const CodingLab: React.FC = () => {
 
                 <div className="space-y-1.5">
                   {testEvaluation.results.map((r: any, idx: number) => (
-                    <div key={idx} className="p-2 rounded bg-[#0B0D12] border border-[#232936] text-[11px] font-mono flex items-center justify-between">
-                      <span className="text-[#94A3B8]">Test {r.testIndex}: {r.isHidden ? '(Hidden Case)' : r.input}</span>
-                      <span className={r.passed ? 'text-emerald-400' : 'text-rose-400'}>
-                        {r.passed ? 'PASSED' : 'FAILED'}
+                    <div key={idx} className="p-2 rounded bg-[#0B0D12] border border-[#232936] text-[11px] font-mono flex items-center justify-between gap-2">
+                      <span className="text-[#94A3B8] truncate">Test {r.testIndex}: {r.isHidden ? '(Hidden Constraint Case)' : r.input}</span>
+                      <span className={r.passed ? 'text-emerald-400 shrink-0' : 'text-rose-400 shrink-0'}>
+                        {r.passed ? 'PASSED' : `FAILED (Got: ${r.actualOutput || r.error || 'empty'})`}
                       </span>
                     </div>
                   ))}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Compass, Lock, CheckCircle2, Circle, Clock, 
-  Sparkles, Bot, Send, Loader2, Award, ArrowRight, UserCheck 
+  Compass, Lock, CheckCircle2, Sparkles, Bot, Send,
+  Loader2, ArrowRight, UserCheck, AlertCircle
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { SkillRoadmap, SkillNode, MockInterviewSession } from '../../types';
@@ -12,6 +12,7 @@ export const SkillDevelopment: React.FC = () => {
   const [roadmaps, setRoadmaps] = useState<SkillRoadmap[]>([]);
   const [selectedRoadmap, setSelectedRoadmap] = useState<SkillRoadmap | null>(null);
   const [selectedNode, setSelectedNode] = useState<SkillNode | null>(null);
+  const [prereqError, setPrereqError] = useState<string>('');
 
   // Mock Interview State
   const [interviewRole, setInterviewRole] = useState('Full-Stack AI Engineer');
@@ -33,12 +34,23 @@ export const SkillDevelopment: React.FC = () => {
 
   const handleUpdateNodeStatus = async (status: 'locked' | 'available' | 'in_progress' | 'mastered') => {
     if (!selectedRoadmap || !selectedNode) return;
-    await api.updateSkillStatus(selectedRoadmap.id, selectedNode.id, status);
-    
-    // Update local state
-    const updatedNodes = selectedRoadmap.nodes.map(n => n.id === selectedNode.id ? { ...n, status } : n);
-    setSelectedRoadmap({ ...selectedRoadmap, nodes: updatedNodes });
-    setSelectedNode({ ...selectedNode, status });
+    setPrereqError('');
+    const result = await api.updateSkillStatus(selectedRoadmap.id, selectedNode.id, status);
+    if (!result.ok) {
+      setPrereqError(result.error || 'Complete prerequisite skills before unlocking this milestone.');
+      return;
+    }
+
+    if (result.roadmap) {
+      setRoadmaps(prev => prev.map(r => r.id === result.roadmap!.id ? result.roadmap! : r));
+      setSelectedRoadmap(result.roadmap);
+      const refreshedNode = result.roadmap.nodes.find(n => n.id === selectedNode.id);
+      if (refreshedNode) setSelectedNode(refreshedNode);
+    } else {
+      const updatedNodes = selectedRoadmap.nodes.map(n => n.id === selectedNode.id ? { ...n, status } : n);
+      setSelectedRoadmap({ ...selectedRoadmap, nodes: updatedNodes });
+      setSelectedNode({ ...selectedNode, status });
+    }
   };
 
   const handleStartInterview = async () => {
@@ -66,6 +78,18 @@ export const SkillDevelopment: React.FC = () => {
     } finally {
       setIsSubmittingInterview(false);
     }
+  };
+
+  const getPrerequisiteTitles = (node: SkillNode): { id: string; title: string; mastered: boolean }[] => {
+    if (!selectedRoadmap || !node.prerequisites?.length) return [];
+    return node.prerequisites.map(prereqId => {
+      const found = selectedRoadmap.nodes.find(n => n.id === prereqId);
+      return {
+        id: prereqId,
+        title: found ? found.title : prereqId,
+        mastered: found ? found.status === 'mastered' : false
+      };
+    });
   };
 
   return (
@@ -114,57 +138,76 @@ export const SkillDevelopment: React.FC = () => {
         <div className="space-y-6">
           {/* Roadmap Selector */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {roadmaps.map(rm => (
-              <button
-                key={rm.id}
-                onClick={() => {
-                  setSelectedRoadmap(rm);
-                  if (rm.nodes.length > 0) setSelectedNode(rm.nodes[0]);
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                  selectedRoadmap?.id === rm.id
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                    : 'bg-[#151923] text-[#94A3B8] hover:text-[#F8FAFC] border border-[#232936]'
-                }`}
-              >
-                {rm.title}
-              </button>
-            ))}
+            {roadmaps.map(rm => {
+              const masteredCount = rm.nodes.filter(n => n.status === 'mastered').length;
+              return (
+                <button
+                  key={rm.id}
+                  onClick={() => {
+                    setSelectedRoadmap(rm);
+                    setPrereqError('');
+                    if (rm.nodes.length > 0) setSelectedNode(rm.nodes[0]);
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
+                    selectedRoadmap?.id === rm.id
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                      : 'bg-[#151923] text-[#94A3B8] hover:text-[#F8FAFC] border border-[#232936]'
+                  }`}
+                >
+                  <span>{rm.title}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/20 font-mono">
+                    {masteredCount}/{rm.nodes.length}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {selectedRoadmap && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Skill Tree Nodes (7 cols) */}
               <div className="lg:col-span-7 bg-[#151923] border border-[#232936] rounded-xl p-6 space-y-4">
-                <div className="pb-3 border-b border-[#232936]">
-                  <h2 className="text-base font-bold text-[#F8FAFC]">{selectedRoadmap.title}</h2>
-                  <p className="text-xs text-[#94A3B8] mt-1">{selectedRoadmap.description}</p>
+                <div className="pb-3 border-b border-[#232936] flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-bold text-[#F8FAFC]">{selectedRoadmap.title}</h2>
+                    <p className="text-xs text-[#94A3B8] mt-1">{selectedRoadmap.description}</p>
+                  </div>
+                  <Badge variant="purple">
+                    {Math.round((selectedRoadmap.nodes.filter(n => n.status === 'mastered').length / Math.max(1, selectedRoadmap.nodes.length)) * 100)}% Mastered
+                  </Badge>
                 </div>
 
                 <div className="space-y-3 relative">
                   {selectedRoadmap.nodes.map((node, idx) => {
                     const isSelected = selectedNode?.id === node.id;
+                    const prereqs = getPrerequisiteTitles(node);
                     const statusColor = 
                       node.status === 'mastered' ? 'border-emerald-500/40 bg-emerald-950/10' :
                       node.status === 'in_progress' ? 'border-amber-500/40 bg-amber-950/10' :
                       node.status === 'available' ? 'border-indigo-500/40 bg-indigo-950/10' :
-                      'border-[#232936] bg-[#0B0D12] opacity-60';
+                      'border-[#232936] bg-[#0B0D12] opacity-70';
 
                     return (
                       <div
                         key={node.id}
-                        onClick={() => setSelectedNode(node)}
+                        onClick={() => {
+                          setSelectedNode(node);
+                          setPrereqError('');
+                        }}
                         className={`p-4 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${statusColor} ${
                           isSelected ? 'ring-2 ring-indigo-500' : 'hover:border-slate-600'
                         }`}
                       >
                         <div className="flex items-center gap-3.5">
                           <div className="w-8 h-8 rounded-lg bg-[#151923] border border-[#232936] flex items-center justify-center font-mono text-xs font-bold text-indigo-400">
-                            0{idx + 1}
+                            {node.status === 'locked' ? <Lock size={13} className="text-[#94A3B8]" /> : `0${idx + 1}`}
                           </div>
                           <div>
                             <div className="text-xs font-semibold text-[#F8FAFC]">{node.title}</div>
-                            <div className="text-[11px] text-[#94A3B8]">{node.category}</div>
+                            <div className="text-[11px] text-[#94A3B8]">
+                              {node.category}
+                              {prereqs.length > 0 && ` • Requires: ${prereqs.map(p => p.title).join(', ')}`}
+                            </div>
                           </div>
                         </div>
 
@@ -194,10 +237,39 @@ export const SkillDevelopment: React.FC = () => {
                       <p className="text-xs text-[#94A3B8]">{selectedNode.description}</p>
                     </div>
 
+                    {/* Prerequisite Check */}
+                    {getPrerequisiteTitles(selectedNode).length > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="text-xs font-semibold text-[#94A3B8]">Prerequisites:</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {getPrerequisiteTitles(selectedNode).map(pr => (
+                            <span
+                              key={pr.id}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
+                                pr.mastered
+                                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                                  : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                              }`}
+                            >
+                              {pr.mastered ? <CheckCircle2 size={11} /> : <Lock size={11} />}
+                              {pr.title}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {prereqError && (
+                      <div role="alert" className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 flex items-start gap-2">
+                        <AlertCircle size={15} className="shrink-0 mt-0.5 text-amber-400" />
+                        <span>{prereqError}</span>
+                      </div>
+                    )}
+
                     {/* Status updater */}
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-[#94A3B8]">Update Skill Mastery Status:</label>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         {(['available', 'in_progress', 'mastered'] as const).map(st => (
                           <button
                             key={st}
@@ -262,8 +334,9 @@ export const SkillDevelopment: React.FC = () => {
                 >
                   <option value="Full-Stack AI Engineer">Full-Stack AI Engineer</option>
                   <option value="Frontend Engineer">Frontend Engineer</option>
-                  <option value="Backend Engineer">Backend Engineer</option>
+                  <option value="Backend Engineer">Backend & Distributed Systems Engineer</option>
                   <option value="AI Engineer">AI & Machine Learning Engineer</option>
+                  <option value="Systems & OS Engineer">Systems & Kernel Engineer</option>
                 </select>
               </div>
 

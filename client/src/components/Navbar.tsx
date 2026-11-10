@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Flame, Clock, Sparkles, Menu, LogOut, Moon, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../types';
+import { api } from '../services/api';
 
 interface NavbarProps {
   user: User | null;
@@ -18,9 +19,9 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onOpenQuickAsk, onLogout, 
   const [isBackendHealthy, setIsBackendHealthy] = useState(true);
 
   useEffect(() => {
-    // Quick health probe
-    fetch('/api/system/health')
-      .then(res => res.ok ? setIsBackendHealthy(true) : setIsBackendHealthy(false))
+    api
+      .getSystemHealth()
+      .then((data) => setIsBackendHealthy(data?.status === 'operational'))
       .catch(() => setIsBackendHealthy(false));
   }, []);
 
