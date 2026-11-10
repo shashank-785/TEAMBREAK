@@ -215,13 +215,13 @@ export const AIAssistant: React.FC = () => {
           </div>
         </div>
         <Badge variant={aiStatus?.isReady ? 'success' : 'warning'} size="sm">
-          {aiStatus?.provider || 'Checking Ollama…'}
+          {aiStatus?.provider || 'Checking local engine…'}
         </Badge>
       </div>
 
       {aiStatus?.isReady === false && (
         <div role="status" className="flex flex-col gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-100 sm:flex-row sm:items-center sm:justify-between">
-          <span>{aiStatus.error || 'Ollama is unavailable. Install it and pull the configured model to enable AI.'}</span>
+          <span>{aiStatus.error || 'The LearnOS local model is unavailable. See the one-time setup instructions.'}</span>
           <Link to="/settings" className="shrink-0 font-semibold text-amber-200 underline underline-offset-2">View setup instructions</Link>
         </div>
       )}
@@ -292,7 +292,7 @@ export const AIAssistant: React.FC = () => {
                 )}
                 {!isUser && message.text && (
                   <div className="flex items-center justify-between border-t border-[#232936]/60 pt-2 text-[10px] text-[#94A3B8]">
-                    <span>LearnOS · Ollama</span>
+                    <span>LearnOS · local model</span>
                     <button
                       onClick={() => copyToClipboard(message.text, message.id)}
                       className="flex items-center gap-1 hover:text-[#F8FAFC]"

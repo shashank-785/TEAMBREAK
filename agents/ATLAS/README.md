@@ -10,7 +10,7 @@
 - **Dashboard (Module 1)**: Student metrics (GPA, study hours, problem solves, quiz tally), today's action plan with interactive completion checkboxes, AI focus recommendations, and subject mastery meters.
 - **AI Assistant (Module 8)**: Omnipresent assistant with pre-built prompts (Resume review, Bug trace, 7-day study plan, Math solver) and markdown copy-to-clipboard.
 - **Analytics (Module 9)**: Weekly study distribution charts, difficulty breakdown, 30-day activity streak calendar, and achievement trophy wall.
-- **Profile & Settings (Module 10)**: Student profile customizer, Gemini/Supabase config, system diagnostics, and user manual.
+- **Profile & Settings (Module 10)**: Student profile customizer, local model readiness and setup guidance, system diagnostics, and user manual.
 
 ## Source Code Mapping
 - `client/src/components/Layout.tsx`

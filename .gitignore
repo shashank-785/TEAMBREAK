@@ -5,5 +5,7 @@ build/
 .env.local
 *.log
 *.zip
+*.gguf
+*.gguf.partial
 coverage/
 .DS_Store

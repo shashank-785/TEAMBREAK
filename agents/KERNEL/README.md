@@ -1,21 +1,20 @@
 # KERNEL Agent — Backend, Database, Auth & Execution APIs
 
 ## Responsibility
-**KERNEL** is responsible for the server infrastructure, database persistence, PostgreSQL / Supabase schema migrations, sandboxed code execution engine, and the autonomous academic AI proxy service.
+**KERNEL** is responsible for the Express server, local JSON persistence, authentication middleware, code-execution integration, and the local academic AI runtime.
 
 ## Completed Features
 - **Server Framework**: Node.js + Express + TypeScript with ESM modules.
 - **Database & Storage**:
-  * Persistent transactional JSON/file storage with automatic seeding to `server/data/learnos.json`.
-  * Complete PostgreSQL / Supabase DDL schema in `server/src/db/schema.sql`.
-  * Supabase adapter in `server/src/db/supabaseClient.ts`.
-- **Autonomous AI Engine**:
-  * Dual-mode design: Proxies to Google Gemini API (free tier) when `GEMINI_API_KEY` is present.
-  * Built-in high-precision Computer Science Academic Reasoning Engine fallback for offline/zero-cost operation.
-- **Sandboxed Code Execution Engine**:
-  * Piston API integration (`https://emkc.org/api/v2/piston/execute`) for C, Python, and JavaScript.
-  * In-process isolated Node VM sandbox fallback for JavaScript.
-  * Simulated test evaluator for Python and C.
+  * Persistent single-user JSON storage in `server/data/learnos.json`.
+  * PostgreSQL/Supabase schemas and adapters are not the active persistence layer.
+- **Local AI Engine**:
+  * `node-llama-cpp` embeds llama.cpp in the LearnOS server and loads Qwen3-1.7B Q8_0 GGUF from user-managed storage.
+  * Model setup verifies the official model checksum; inference does not call external AI APIs.
+  * Model weights must be installed with `npm run setup:model`; no fake response is returned when they are unavailable.
+- **Code Execution**:
+  * Optional Piston-compatible sandbox endpoint.
+  * No in-process untrusted-code fallback; execution is unavailable when no isolated service is configured.
 - **REST Endpoints for 10 Modules**:
   * `/api/auth`
   * `/api/tutor`
@@ -36,6 +35,8 @@
 - `server/src/db/schema.sql`
 - `server/src/db/supabaseClient.ts`
 - `server/src/services/aiService.ts`
+- `server/src/services/aiConfig.ts`
+- `server/scripts/setup-model.ts`
 - `server/src/services/codeExecutionService.ts`
 - `server/src/routes/*.ts`
 
@@ -45,8 +46,9 @@
 
 ## Setup Instructions
 ```bash
-cd server
-npm install
-npm run dev
+npm ci
+npm run setup:model
+npm run dev:server
 ```
 Server starts on `http://localhost:5000`. Health check: `http://localhost:5000/api/system/health`.
+The JSON database is not multi-user production storage; do not expose it to multiple students.

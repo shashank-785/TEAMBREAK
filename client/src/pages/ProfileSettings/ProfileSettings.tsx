@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { 
-  Settings, User, Key, Activity, HelpCircle, BookOpen,
+  Settings, User, Activity, HelpCircle, BookOpen,
   CheckCircle2, XCircle, Shield, Sparkles, Save, Loader2
 } from 'lucide-react';
 import { User as UserType } from '../../types';
@@ -10,7 +10,7 @@ import { api } from '../../services/api';
 
 export const ProfileSettings: React.FC = () => {
   const { user, setUser } = useOutletContext<{ user: UserType | null; setUser: (u: UserType) => void }>();
-  const [activeTab, setActiveTab] = useState<'profile' | 'syllabus' | 'api' | 'diagnostics' | 'help'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'syllabus' | 'ai' | 'diagnostics' | 'help'>('profile');
 
   // Profile Form
   const [name, setName] = useState('');
@@ -108,7 +108,7 @@ export const ProfileSettings: React.FC = () => {
           {[
             { id: 'profile', label: 'Student Profile', icon: User },
             { id: 'syllabus', label: 'University Syllabus', icon: BookOpen },
-            { id: 'api', label: 'Ollama Setup', icon: Key },
+            { id: 'ai', label: 'Local AI', icon: Sparkles },
             { id: 'diagnostics', label: 'Diagnostics', icon: Activity },
             { id: 'help', label: 'User Guide', icon: HelpCircle },
           ].map(tab => {
@@ -283,12 +283,12 @@ export const ProfileSettings: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'api' && (
+      {activeTab === 'ai' && (
         <div className="bg-[#151923] border border-[#232936] rounded-xl p-6 sm:p-8 space-y-6">
           <div className="pb-4 border-b border-[#232936]">
             <h2 className="text-base font-bold text-[#F8FAFC]">Local AI Setup</h2>
             <p className="text-xs text-[#94A3B8] mt-0.5">
-              LearnOS runs its private local model through Ollama. Students do not need API keys or external AI accounts.
+              LearnOS runs its open-weight model in-process with llama.cpp. No AI account, API key, or separate AI application is needed.
             </p>
           </div>
 
@@ -301,8 +301,8 @@ export const ProfileSettings: React.FC = () => {
             </div>
             <p className="mt-2 text-xs text-[#94A3B8]">
               {healthData?.services?.aiEngine?.isReady
-                ? 'Ollama is reachable and the selected model is installed.'
-                : healthData?.services?.aiEngine?.error || 'Ollama or the selected model is unavailable.'}
+                ? 'The local model is loaded and ready for offline inference.'
+                : healthData?.services?.aiEngine?.error || 'The LearnOS model or local runtime is unavailable.'}
             </p>
           </div>
 
@@ -310,15 +310,15 @@ export const ProfileSettings: React.FC = () => {
             <div>
               <label className="text-xs font-medium text-[#94A3B8] flex items-center gap-1.5">
                 <Sparkles size={13} className="text-indigo-400" />
-                <span>Install and run Ollama</span>
+                <span>One-time model setup</span>
               </label>
               <ol className="mt-2 list-inside list-decimal space-y-1.5 text-xs leading-relaxed text-[#94A3B8]">
-                <li>Install Ollama from <a href="https://ollama.com/download" target="_blank" rel="noreferrer" className="font-semibold text-indigo-300 underline underline-offset-2">ollama.com/download</a> and start it.</li>
-                <li>In PowerShell, run <code className="text-indigo-300">ollama pull qwen2.5:3b</code> to download the model (~2 GB).</li>
-                <li>Set <code className="text-indigo-300">OLLAMA_API_URL=http://127.0.0.1:11434/api/chat</code> and <code className="text-indigo-300">OLLAMA_MODEL=qwen2.5:3b</code> in <code className="text-indigo-300">server/.env</code>, then restart the backend.</li>
+                <li>Install LearnOS server dependencies with <code className="text-indigo-300">npm ci</code>; the llama.cpp runtime is included.</li>
+                <li>From the LearnOS project folder, run <code className="text-indigo-300">npm run setup:model</code> once to download and verify the 1.83 GB model.</li>
+                <li>Restart the LearnOS server. The verified model is stored outside the repository and inference works offline after setup.</li>
               </ol>
               <span className="text-[11px] text-[#94A3B8]/70 mt-1 block">
-                Requires about 8 GB RAM; 16 GB is recommended. For a public deployment, Ollama must run on a server reachable by the backend.
+                Qwen3-1.7B Q8_0 (Apache-2.0): 8 GB RAM minimum, 16 GB recommended. For web hosting, run setup on the inference server; students need only a browser.
               </span>
             </div>
 
@@ -357,7 +357,7 @@ export const ProfileSettings: React.FC = () => {
                 className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 disabled:opacity-50"
               >
                 {isDiagnosing ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
-                Check Ollama model
+                Check local model
               </button>
             </div>
           </div>

@@ -15,6 +15,7 @@
     "build:client": "npm run build --prefix client",
     "build:server": "npm run build --prefix server",
     "build": "npm run build:client && npm run build:server",
+    "setup:model": "npm run setup:model --prefix server",
     "publish:pages": "npm run build:client && node scripts/publish-pages.js",
     "test:client": "npm run test --prefix client",
     "test:server": "npm run test --prefix server",

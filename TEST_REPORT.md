@@ -1,29 +1,30 @@
 # LearnOS Test Report
 
-## Verified on 2026-11-08
+## Verified on 2026-11-10
 
-### Builds
+### Builds and dependency audit
 
-- Client production build: passes with `npm run build` in `client`.
-- Server TypeScript build: passes with `npm run build` in `server`.
+- `npm run build`: client production build and server TypeScript build pass.
+- `npm test`: 13/13 server checks pass; client TypeScript check passes.
+- `npm audit`: zero known vulnerabilities.
 
-### Automated tests
+### Local AI
 
-- Client test script: executes but only prints a success message; it is not a unit or lint suite.
-- Server test suite: reports 10 of 10 checks passed.
+- The embedded llama.cpp CPU runtime loads and disposes successfully.
+- Qwen3-1.7B Q8_0 GGUF is installed outside the repository and passes the setup script's size and SHA-256 verification.
+- Tests exercised real local text generation, streamed conversation context, and interview evaluation. No external AI API or Ollama was used.
+- The public setup-status endpoint reports model readiness without exposing server paths or internal error details.
 
-### Runtime
+### Authentication and browser checks
 
-- Backend starts on port 5000.
-- Health endpoint responds successfully.
-- JSON persistence file exists under `server/data/learnos.json`.
-- Representative module APIs are available.
+- API authorization tests verify that private notes, planner, and profile routes are not public; the AI setup-status endpoint is the only additional public system route.
+- An HTTP check confirmed unauthenticated notes requests receive `401`.
+- Browser checks completed account signup and onboarding, and confirmed the local-AI setup notice is shown both before signup and during onboarding.
+- Desktop and mobile dashboard layouts were visually checked. Progress cards use the account's stored values rather than fabricated sample metrics.
+- The API test suite uses an isolated temporary data directory.
 
-### Remaining verification limits
+### Known runtime limitations
 
-- Browser-driven end-to-end coverage is not automated.
-- Gemini integration requires an operator-provided key.
-- External Piston availability depends on a configured service URL and network reachability.
-- Authentication is implemented for submission demo use.
-- Password accounts and persistent production database integration remain deployment work.
-- Demo-session authentication is implemented for submission readiness; production user persistence and password recovery remain separate work.
+- No Piston endpoint is configured, so isolated multi-language code execution is unavailable in this environment; the test suite verifies that unavailable state.
+- The application still uses single-user JSON persistence and is not ready to serve multiple students with private data.
+- Browser-driven end-to-end coverage is not yet part of the automated test suite.

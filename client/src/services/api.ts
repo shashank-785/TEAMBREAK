@@ -8,10 +8,18 @@ const API_BASE = `${(import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}/api
 
 const nativeFetch = globalThis.fetch.bind(globalThis);
 
+export interface AiSetupStatus {
+  isReady: boolean;
+  state: 'ready' | 'loading' | 'not_installed' | 'unavailable';
+  model: string;
+  setupRequired: boolean;
+  message: string;
+}
+
 async function authResponse(res: Response, action: string): Promise<{ token: string; user: User }> {
   const data = await res.json().catch(() => null) as { error?: string; token?: string; user?: User } | null;
   if (!res.ok) {
-    throw new Error(data?.error || `Account ${action} requires the LearnOS server. On GitHub Pages, use Proceed as Demo Account.`);
+    throw new Error(data?.error || `Account ${action} requires the LearnOS server.`);
   }
   if (!data || typeof data.token !== 'string' || !data.user) {
     throw new Error(`The LearnOS server returned an invalid ${action} response.`);
@@ -45,13 +53,16 @@ async function handleResponse<T>(res: Response, fallbackData: T): Promise<T> {
 
 export const api = {
   // Auth & Profile
-  async getAuthStatus(): Promise<{ registered: boolean; onboardingComplete: boolean }> {
-    if (
-      localStorage.getItem('learnos_token') === 'demo-static-session'
-      || localStorage.getItem('learnos_demo_session') === 'true'
-    ) {
-      return { registered: true, onboardingComplete: true };
+  async getAiSetupStatus(): Promise<AiSetupStatus> {
+    const res = await nativeFetch(`${API_BASE}/system/ai-status`);
+    if (!res.ok) throw new Error(`AI setup status request failed (HTTP ${res.status}).`);
+    const data = await res.json() as { success?: boolean } & AiSetupStatus;
+    if (data.success !== true || typeof data.isReady !== 'boolean' || typeof data.setupRequired !== 'boolean' || typeof data.message !== 'string') {
+      throw new Error('The LearnOS server returned an invalid AI setup status.');
     }
+    return data;
+  },
+  async getAuthStatus(): Promise<{ registered: boolean; onboardingComplete: boolean }> {
     const res = await nativeFetch(`${API_BASE}/auth/status`);
     return res.ok ? res.json() : { registered: false, onboardingComplete: false };
   },
@@ -64,12 +75,10 @@ export const api = {
         body: JSON.stringify({ email, password, confirmPassword, profile })
       });
     } catch {
-      throw new Error('Account sign-up requires the LearnOS server. On GitHub Pages, use Proceed as Demo Account.');
+      throw new Error('Account sign-up requires the LearnOS server.');
     }
     const data = await authResponse(res, 'sign-up');
     localStorage.setItem('learnos_token', data.token);
-    localStorage.removeItem('learnos_demo_session');
-    localStorage.removeItem('learnos_demo_user');
     return data;
   },
   async login(email: string, password: string): Promise<{ token: string; user: User }> {
@@ -81,65 +90,13 @@ export const api = {
         body: JSON.stringify({ email, password })
       });
     } catch {
-      throw new Error('Account login requires the LearnOS server. On GitHub Pages, use Proceed as Demo Account.');
+      throw new Error('Account login requires the LearnOS server.');
     }
     const data = await authResponse(res, 'login');
     localStorage.setItem('learnos_token', data.token);
-    localStorage.removeItem('learnos_demo_session');
-    localStorage.removeItem('learnos_demo_user');
     return data;
   },
-  async loginAsDemo(): Promise<{ token: string; user: User }> {
-    try {
-      const res = await nativeFetch(`${API_BASE}/auth/demo`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        localStorage.setItem('learnos_token', data.token);
-        localStorage.setItem('learnos_demo_session', 'true');
-        localStorage.setItem('learnos_demo_user', JSON.stringify(data.user));
-        return data;
-      }
-    } catch {
-      // GitHub Pages and other static hosts cannot run the Express API.
-    }
-
-    const demoUser: User = {
-      id: 'usr_demo_shashank',
-      name: 'Shashank Soam',
-      email: 'shashank.demo@learnos.app',
-      university: 'Indian Institute of Information Technology, Sonepat',
-      major: 'B.Tech Computer Science and Engineering',
-      semester: 1,
-      targetGpa: 10,
-      currentGpa: 0,
-      dreamRole: 'Full-Stack Developer Intern',
-      streakDays: 6,
-      totalStudyHours: 16.5,
-      quizzesCompleted: 18,
-      problemsSolved: 54,
-      avatarUrl: '',
-      createdAt: '2026-11-08T00:00:00.000Z'
-    };
-    localStorage.setItem('learnos_token', 'demo-static-session');
-    localStorage.setItem('learnos_demo_session', 'true');
-    localStorage.setItem('learnos_demo_user', JSON.stringify(demoUser));
-    return { token: 'demo-static-session', user: demoUser };
-  },
   async getMe(): Promise<User | null> {
-    if (localStorage.getItem('learnos_token') === 'demo-static-session') {
-      const savedDemoUser = localStorage.getItem('learnos_demo_user');
-      if (!savedDemoUser) return null;
-      try {
-        const user = JSON.parse(savedDemoUser) as User;
-        return typeof user.id === 'string' && typeof user.name === 'string' ? user : null;
-      } catch {
-        return null;
-      }
-    }
     const res = await apiFetch(`${API_BASE}/auth/me`);
     if (!res.ok) return null;
     const data = await res.json();

@@ -5,8 +5,25 @@ export interface AuthRequest extends Request {
   auth?: { email: string; userId: string };
 }
 
-const defaultSecret = 'learnos-local-development-secret-change-me';
-const getSecret = () => process.env.AUTH_SECRET || defaultSecret;
+export function isPublicApiRequest(method: string, path: string): boolean {
+  if (method === 'OPTIONS') return true;
+  if (method === 'GET' && path === '/auth/status') return true;
+  if (method === 'GET' && path === '/system/ai-status') return true;
+  return method === 'POST' && (path === '/auth/login' || path === '/auth/register');
+}
+
+const exampleSecret = 'replace-with-a-long-random-secret-before-deployment';
+const getSecret = () => {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret || Buffer.byteLength(secret.trim(), 'utf8') < 32 || secret.trim() === exampleSecret) {
+    throw new Error('AUTH_SECRET must be set to a unique random value of at least 32 bytes.');
+  }
+  return secret;
+};
+
+export function assertAuthConfiguration(): void {
+  getSecret();
+}
 
 export function createSessionToken(userId: string, email: string): string {
   const payload = Buffer.from(JSON.stringify({
