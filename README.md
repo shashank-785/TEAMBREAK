@@ -114,8 +114,19 @@ npm run setup:model
 The deployment guide documents a model download of approximately 1.83 GB into the user's local model directory, outside the repository.
 
 > **Runtime note:** AI generation requires the model files and native runtime to be available on the backend host. If they are missing, the server reports AI as unavailable rather than presenting placeholder generated responses.
+>
+> 
+## 🤝 6. BharatCode AI — Acknowledgement & Future Scope
 
-## 🔐 6. Data, Security & Current Limitations
+During the development of LearnOS, our team was not familiar with the BharatCode AI platform and its capabilities. Consequently, BharatCode AI was not integrated into the current version of the project.
+
+We acknowledge BharatCode AI as an emerging opportunity for future development and plan to explore its API, AI models, and integration possibilities in upcoming iterations.
+
+**Our commitment:** Continue learning, experimenting, and improving LearnOS by exploring new AI technologies and developer platforms.
+
+
+
+## 🔐 7. Data, Security & Current Limitations
 
 The following implementation details are important when running or deploying LearnOS:
 
@@ -126,7 +137,7 @@ The following implementation details are important when running or deploying Lea
 - **AI availability:** Local inference depends on the model weights and native runtime being installed on the backend host.
 - **Code execution:** An isolated Piston-compatible sandbox endpoint must be configured; code execution is not available by default.
 
-## 🛠️ 7. Installation & Quick Start
+## 🛠️ 8. Installation & Quick Start
 
 ### Prerequisites
 
@@ -185,7 +196,7 @@ npm run dev:client
 
 Open the local frontend URL shown by Vite (the deployment guide uses `http://localhost:5173`).
 
-## 🧪 8. Build & Test
+## 🧪 9. Build & Test
 
 Run the test suites:
 
@@ -211,7 +222,7 @@ Build only the backend:
 npm run build:server
 ```
 
-## 🌐 9. Deployment
+## 🌐 10. Deployment
 
 The frontend and backend are deployed separately:
 
@@ -222,7 +233,7 @@ For self-hosting, deploy the Express backend on a host that can store and load t
 
 **Important:** GitHub Pages can host the frontend, but it cannot host the Express API or run the local language model. Review [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) before deploying.
 
-## 🗺️ 10. Application Routes
+## 🗺️ 11. Application Routes
 
 | Route | Section |
 |---|---|
@@ -237,13 +248,13 @@ For self-hosting, deploy the Express backend on a host that can store and load t
 | `/analytics` | Analytics |
 | `/settings` | Profile & Settings |
 
-## 📚 11. Project Documentation
+## 📚 12. Project Documentation
 
 - [Deployment Guide](DEPLOYMENT_GUIDE.md)
 - [Integration Report](INTEGRATION_REPORT.md)
 - [Test Report](TEST_REPORT.md)
 
-## 🤝 12. Contributing
+## 🤝 13. Contributing
 
 Contributions and suggestions are welcome.
 
@@ -251,6 +262,10 @@ Contributions and suggestions are welcome.
 2. Create a feature branch.
 3. Make focused changes and test them.
 4. Open a pull request with a clear description of the changes.
+
+
+
+
 
 ## 📄 License
 
