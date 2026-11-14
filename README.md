@@ -41,7 +41,35 @@ It combines academic support, study planning, document-based revision, coding pr
 - **AI-assisted study:** Provide tutor and assistant experiences supported by the configured local inference runtime.
 - **Progress awareness:** Present study activity, quiz performance, and achievements in a single place.
 
-## 🧩 3. Platform Modules
+
+## 3.🧠 Usefulness of Large Language Models (LLMs)
+
+Large Language Models (LLMs) make LearnOS more interactive, intelligent, and accessible by helping students understand concepts and improve their learning experience.
+
+### Key Benefits of LLMs in LearnOS
+
+1. **Personalised Learning:** Help students understand difficult academic concepts through conversational explanations.
+
+2. **AI Tutoring:** Provide explanations, examples, and guidance on different subjects.
+
+3. **Smart Study Assistance:** Help summarise study material and make complex information easier to understand.
+
+4. **Question Generation:** Assist in creating practice questions and quizzes for revision.
+
+5. **Programming Support:** Explain programming concepts, help understand code, and assist students while learning different programming languages.
+
+6. **Career Preparation:** Support interview preparation, technical learning, and skill development.
+
+7. **24/7 Learning Support:** Make learning assistance accessible whenever students need it.
+
+### Why LLMs Matter
+
+Traditional learning platforms mainly provide predefined content. LLM-powered applications can offer interactive assistance that responds to individual questions and learning requirements.
+
+By exploring LLM technologies, LearnOS aims to make education more accessible, engaging, and student-focused.
+
+
+## 🧩 4. Platform Modules
 
 | Module | Capabilities |
 |---|---|
@@ -56,7 +84,7 @@ It combines academic support, study planning, document-based revision, coding pr
 | **Analytics** | Study activity, quiz accuracy, coding progress, and achievements |
 | **Profile & Settings** | Academic profile and application configuration |
 
-## 🏗️ 4. System Architecture
+## 🏗️ 5. System Architecture
 
 LearnOS is organised as an npm workspace monorepo.
 
@@ -94,7 +122,7 @@ TEAMBREAK/
 | Code execution | Optional isolated Piston-compatible sandbox endpoint |
 | Deployment | GitHub Pages frontend; separately hosted backend |
 
-## 🧠 5. AI Inference Architecture
+## 🧠 6. AI Inference Architecture
 
 LearnOS is designed to run its configured language model locally on the backend host.
 
@@ -116,7 +144,7 @@ The deployment guide documents a model download of approximately 1.83 GB into th
 > **Runtime note:** AI generation requires the model files and native runtime to be available on the backend host. If they are missing, the server reports AI as unavailable rather than presenting placeholder generated responses.
 >
 > 
-## 🤝 6. BharatCode AI — Acknowledgement & Future Scope
+## 🤝 7. BharatCode AI — Acknowledgement & Future Scope
 
 During the development of LearnOS, our team was not familiar with the BharatCode AI platform and its capabilities. Consequently, BharatCode AI was not integrated into the current version of the project.
 
@@ -126,7 +154,7 @@ We acknowledge BharatCode AI as an emerging opportunity for future development a
 
 
 
-## 🔐 7. Data, Security & Current Limitations
+## 🔐 8. Data, Security & Current Limitations
 
 The following implementation details are important when running or deploying LearnOS:
 
@@ -137,7 +165,7 @@ The following implementation details are important when running or deploying Lea
 - **AI availability:** Local inference depends on the model weights and native runtime being installed on the backend host.
 - **Code execution:** An isolated Piston-compatible sandbox endpoint must be configured; code execution is not available by default.
 
-## 🛠️ 8. Installation & Quick Start
+## 🛠️ 9. Installation & Quick Start
 
 ### Prerequisites
 
@@ -196,7 +224,7 @@ npm run dev:client
 
 Open the local frontend URL shown by Vite (the deployment guide uses `http://localhost:5173`).
 
-## 🧪 9. Build & Test
+## 🧪 10. Build & Test
 
 Run the test suites:
 
@@ -222,7 +250,7 @@ Build only the backend:
 npm run build:server
 ```
 
-## 🌐 10. Deployment
+## 🌐 11. Deployment
 
 The frontend and backend are deployed separately:
 
@@ -233,7 +261,7 @@ For self-hosting, deploy the Express backend on a host that can store and load t
 
 **Important:** GitHub Pages can host the frontend, but it cannot host the Express API or run the local language model. Review [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) before deploying.
 
-## 🗺️ 11. Application Routes
+## 🗺️ 12. Application Routes
 
 | Route | Section |
 |---|---|
@@ -248,13 +276,13 @@ For self-hosting, deploy the Express backend on a host that can store and load t
 | `/analytics` | Analytics |
 | `/settings` | Profile & Settings |
 
-## 📚 12. Project Documentation
+## 📚 13. Project Documentation
 
 - [Deployment Guide](DEPLOYMENT_GUIDE.md)
 - [Integration Report](INTEGRATION_REPORT.md)
 - [Test Report](TEST_REPORT.md)
 
-## 🤝 13. Contributing
+## 🤝 14. Contributing
 
 Contributions and suggestions are welcome.
 
